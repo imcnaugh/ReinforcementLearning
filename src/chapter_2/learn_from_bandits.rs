@@ -46,6 +46,10 @@ fn calc_new_expected_action_value_new(current_estimate: f32, count_of_times_acti
     current_estimate + (1.0 / count_of_times_actions_taken as f32) * (reward - current_estimate)
 }
 
+fn calc_weighted_average(weight: f32, current_average: f32, new_reward: f32) -> f32 {
+    current_average + weight * (new_reward - current_average)
+}
+
 fn get_explore_action_id(num_of_bandits: usize) -> usize {
     rand::rng().random_range(0..num_of_bandits)
 }
@@ -121,5 +125,31 @@ mod tests {
 
         println!("old estimate: {}, new estimate: {}", old_estimate, new_estimate);
         assert_eq!(new_estimate, old_estimate);
+    }
+
+    #[test]
+    fn test_weighted_average() {
+        let rewards = vec![1.1, 1.2, 1.2, 1.1, 1.3, 1.2, 0.9];
+        let mut current_average: f32 = 0.0;
+        let weight: f32 = 0.5;
+
+        for reward in rewards.iter() {
+            current_average = calc_weighted_average(weight, current_average, *reward);
+        }
+
+        println!("current average: {}", current_average);
+        
+        let mut idk_sum: f32 = 0.0;
+        for (n , reward) in rewards.iter().enumerate() {
+            let a = (1.0 - weight).powi((rewards.len() - 1 - n) as i32);
+            let b = weight * a;
+            let c = b * reward;
+            idk_sum += c;
+        }
+        let d = (1.0 - weight).powi(rewards.len() as i32);
+        let f = d * rewards[0];
+        let j = f + idk_sum;
+
+        println!("j: {}", j);
     }
 }
