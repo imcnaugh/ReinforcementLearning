@@ -129,27 +129,26 @@ mod tests {
 
     #[test]
     fn test_weighted_average() {
-        let rewards = vec![1.1, 1.2, 1.2, 1.1, 1.3, 1.2, 0.9];
+        let rewards = vec![100.1, 1.2, 1.2, 1.1, 1.3, 1.2, 0.9];
         let mut current_average: f32 = 0.0;
         let weight: f32 = 0.5;
 
         for reward in rewards.iter() {
             current_average = calc_weighted_average(weight, current_average, *reward);
+            println!("current average: {}", current_average);
         }
 
-        println!("current average: {}", current_average);
+        println!("final current average: {}", current_average);
         
-        let mut idk_sum: f32 = 0.0;
+        let mut accumulated_weighted_score: f32 = 0.0;
         for (n , reward) in rewards.iter().enumerate() {
             let a = (1.0 - weight).powi((rewards.len() - 1 - n) as i32);
             let b = weight * a;
             let c = b * reward;
-            idk_sum += c;
+            accumulated_weighted_score += c;
+            println!("accumulated_weighted_score: {}", accumulated_weighted_score);
         }
-        let d = (1.0 - weight).powi(rewards.len() as i32);
-        let f = d * rewards[0];
-        let j = f + idk_sum;
 
-        println!("j: {}", j);
+        println!("final accumulated_weighted_score: {}", accumulated_weighted_score);
     }
 }
