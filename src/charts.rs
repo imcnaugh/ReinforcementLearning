@@ -1,6 +1,6 @@
 use plotters::prelude::*;
 
-fn wat() -> Result<(), Box<dyn std::error::Error>> {
+fn wat(plots: Vec<(f32, f32)>) -> Result<(), Box<dyn std::error::Error>> {
     let root = BitMapBackend::new("output/my_chart.png", (640, 480)).into_drawing_area();
 
     std::fs::create_dir_all("output")?;
@@ -18,8 +18,8 @@ fn wat() -> Result<(), Box<dyn std::error::Error>> {
 
     chart
         .draw_series(LineSeries::new(
-            (-50..=50).map(|x| x as f32 / 50.0).map(|x| (x, x)),
-            &RED,
+            plots,
+            &BLUE,
         ))?
         .label("y = x")
         .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
@@ -41,7 +41,9 @@ mod tests {
 
     #[test]
     fn wat_that_thang_do() {
-        match wat() {
+        let idk = vec![(0.0, 0.0), (0.3,0.2), (0.5, 0.9)];
+
+        match wat(idk) {
             Ok(_) => {assert!(true, "wat")}
             Err(e) => {panic!("wat {}", e)}
         }
