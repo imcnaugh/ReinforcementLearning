@@ -1,4 +1,4 @@
-use crate::chapter_2::k_armed_bandit::KArmedBandit;
+use crate::chapter_02::k_armed_bandit::KArmedBandit;
 use rand::Rng;
 
 fn learn(bandits: &KArmedBandit, explore_rate: f32, steps: u32) -> Vec<(f32, f32)> {

@@ -1,4 +1,4 @@
-use crate::chapter_2::Bandit;
+use crate::chapter_02::Bandit;
 
 pub struct KArmedBandit {
     bandits: Vec<Bandit>,
