@@ -85,7 +85,7 @@ impl ChartBuilder {
     }
 
     pub fn create_chart(self) -> Result<(), Box<dyn Error>> {
-        let size = self.png_size.unwrap_or((640, 480));
+        let size = self.png_size.unwrap_or((1200, 900));
         let path = &get_output_path(self.output_path)?;
         let root = BitMapBackend::new(path, size).into_drawing_area();
 
@@ -94,11 +94,11 @@ impl ChartBuilder {
         let mut builder = plotters::prelude::ChartBuilder::on(&root);
         let mut builder = builder
             .margin(5)
-            .x_label_area_size(30)
-            .y_label_area_size(30);
+            .x_label_area_size(60)
+            .y_label_area_size(60);
         let mut builder = match self.title {
             None => builder,
-            Some(title) => builder.caption(title, ("sans-serif", 50).into_font()),
+            Some(title) => builder.caption(title, ("sans-serif", 60).into_font()),
         };
 
         let (x_min, x_max, y_min, y_max) = get_graph_bounds(&self.data);
@@ -114,11 +114,13 @@ impl ChartBuilder {
 
         let mut configure_mesh = chart.configure_mesh();
         if let Some(x_desc) = self.x_label {
-            configure_mesh.x_desc(x_desc);
+            configure_mesh.x_desc(x_desc).label_style(("sans-serif", 30).into_font());
         }
         if let Some(y_desc) = self.y_label {
-            configure_mesh.y_desc(y_desc);
+            configure_mesh.y_desc(y_desc).label_style(("sans-serif", 30).into_font());
         }
+        configure_mesh.x_label_style(("sans-serif", 20).into_font()).y_label_style(("sans-serif", 20).into_font());
+
         configure_mesh.draw()?;
 
         let default_styles: Vec<ShapeStyle> = vec![BLUE.into(), RED.into(), GREEN.into()];
@@ -143,11 +145,14 @@ impl ChartBuilder {
                 .draw_series(LineSeries::new(p.points.clone(), style))
                 .unwrap()
                 .label(label)
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], style));
+                .legend(move |(x, y)| {
+                    PathElement::new(vec![(x, y), (x + 20, y)], style.stroke_width(3))
+                });
         });
 
         chart
             .configure_series_labels()
+            .label_font(("sans-sarif", 30).into_font())
             .background_style(&WHITE.mix(0.8))
             .border_style(&BLACK)
             .draw()?;
@@ -221,7 +226,7 @@ mod tests {
             .set_title(String::from("Some Title"))
             .set_x_label(String::from("The X axis"))
             .set_y_label(String::from("The Y axis"))
-            // .set_size(900, 800)
+            // .set_size(1200, 900)
             .add_data(data_2)
             .add_data(data_3);
         builder.create_chart();
