@@ -1,6 +1,7 @@
 mod chapter_02;
 mod chapter_03;
 mod service;
+mod chapter_04;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
