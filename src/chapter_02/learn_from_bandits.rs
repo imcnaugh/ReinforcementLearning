@@ -86,10 +86,10 @@ fn get_exploit_action_id(estimated_action_values: &Vec<f32>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
     use super::*;
     use crate::service::{ChartBuilder, ChartData};
     use plotters::prelude::{ShapeStyle, BLACK, BLUE, GREEN};
+    use std::path::PathBuf;
     use std::time::Instant;
 
     fn setup_bandit() -> KArmedBandit {
@@ -109,7 +109,13 @@ mod tests {
         let c = ChartData::new("e = 0".to_string(), c_return, ShapeStyle::from(&BLACK));
 
         let mut builder = ChartBuilder::new();
-        builder.add_data(a).add_data(b).add_data(c).set_path(PathBuf::from("output/chapter2/average_reward_by_explore_rate.png"));
+        builder
+            .add_data(a)
+            .add_data(b)
+            .add_data(c)
+            .set_path(PathBuf::from(
+                "output/chapter2/average_reward_by_explore_rate.png",
+            ));
         builder.create_chart().unwrap();
     }
 

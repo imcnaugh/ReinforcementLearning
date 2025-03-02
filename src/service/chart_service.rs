@@ -114,12 +114,18 @@ impl ChartBuilder {
 
         let mut configure_mesh = chart.configure_mesh();
         if let Some(x_desc) = self.x_label {
-            configure_mesh.x_desc(x_desc).label_style(("sans-serif", 30).into_font());
+            configure_mesh
+                .x_desc(x_desc)
+                .label_style(("sans-serif", 30).into_font());
         }
         if let Some(y_desc) = self.y_label {
-            configure_mesh.y_desc(y_desc).label_style(("sans-serif", 30).into_font());
+            configure_mesh
+                .y_desc(y_desc)
+                .label_style(("sans-serif", 30).into_font());
         }
-        configure_mesh.x_label_style(("sans-serif", 20).into_font()).y_label_style(("sans-serif", 20).into_font());
+        configure_mesh
+            .x_label_style(("sans-serif", 20).into_font())
+            .y_label_style(("sans-serif", 20).into_font());
 
         configure_mesh.draw()?;
 

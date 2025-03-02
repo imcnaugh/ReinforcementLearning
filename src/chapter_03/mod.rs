@@ -1,4 +1,3 @@
-
 #[cfg(test)]
 mod tests {
     #[test]
@@ -18,7 +17,6 @@ mod tests {
             acc + reward_with_discount
         })
     }
-
 
     /// Computes the total discounted reward using dynamic programming.
     ///
@@ -45,21 +43,23 @@ mod tests {
     fn discount_reward_test() {
         let discount_rate = 0.9f32;
         let rewards_all_zeros = vec![0.0, 0.0, 0.0, 0.0, 0.0];
-        let all_zeros_total_discounted = discount_reward_primitive(&rewards_all_zeros, discount_rate);
+        let all_zeros_total_discounted =
+            discount_reward_primitive(&rewards_all_zeros, discount_rate);
         assert_eq!(all_zeros_total_discounted, 0.0);
 
         let random_rewards = (0..100).map(|_| rand::random::<f32>()).collect();
-        let random_rewards_total_discounted = discount_reward_primitive(&random_rewards, discount_rate);
+        let random_rewards_total_discounted =
+            discount_reward_primitive(&random_rewards, discount_rate);
         let sum_of_random_rewards = &random_rewards.iter().sum::<f32>();
-        println!("random_rewards_total_discounted: {}", random_rewards_total_discounted);
+        println!(
+            "random_rewards_total_discounted: {}",
+            random_rewards_total_discounted
+        );
         println!("sum_of_random_rewards: {}", sum_of_random_rewards);
         assert!(random_rewards_total_discounted > 0.0);
 
-        let possible = discount_reward_dynamic_programming(
-            &random_rewards,
-            discount_rate);
+        let possible = discount_reward_dynamic_programming(&random_rewards, discount_rate);
 
         println!("possible: {}", possible);
-
     }
 }
