@@ -22,11 +22,23 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn is_terminal(&self) -> bool {
-        self.actions.is_empty()
-    }
-
     pub fn add_action(&mut self, action: &'a Actions<'a>) {
         self.actions.push(action);
+    }
+
+    pub fn get_value(&self) -> f32 {
+        self.value
+    }
+
+    pub fn set_value(&mut self, value: f32) {
+        self.value = value;
+    }
+
+    pub fn get_actions(&self) -> &Vec<&'a Actions<'a>> {
+        &self.actions
+    }
+
+    pub fn get_id(&self) -> &String {
+        &self.id
     }
 }

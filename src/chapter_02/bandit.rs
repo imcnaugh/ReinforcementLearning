@@ -1,4 +1,3 @@
-use rand;
 
 pub struct Bandit {
     id: u32,
