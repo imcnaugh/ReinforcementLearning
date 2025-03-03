@@ -1,13 +1,16 @@
 mod action;
+mod policy;
 mod state;
 
+use crate::chapter_04::policy::Policy;
 pub use action::Actions;
 pub use state::State;
 use std::cell::RefCell;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 fn iterative_policy_evaluation(
+    policy: &Policy,
     states: &mut Vec<Rc<RefCell<State>>>,
     discount_rate: f32,
     threshold: f32,
@@ -26,13 +29,17 @@ fn iterative_policy_evaluation(
             let mut new_value: f32 = f32::NEG_INFINITY;
 
             // Iterate through each action in the state's action list
-            for action in state.borrow().get_actions() {
+            for (action_probability, action) in
+                policy.get_probabilities_for_each_action_of_state(&state.borrow())
+            {
                 let mut action_value = 0.0;
 
                 // Calculate the expected value for each possible next state and reward
-                for (probability, next_state) in action.get_possible_next_states() {
-                    action_value += probability
-                        * (action.get_reward() + discount_rate * next_state.borrow().get_value());
+                for (next_state_probability, next_state) in action.get_possible_next_states() {
+                    action_value += action_probability
+                        * (next_state_probability
+                            * (action.get_reward()
+                                + discount_rate * next_state.borrow().get_value()));
                 }
 
                 new_value = new_value.max(action_value); // Take the action that maximizes the value
@@ -40,7 +47,7 @@ fn iterative_policy_evaluation(
 
             // Update the state's value and calculate the maximum change (delta)
             state.borrow_mut().set_value(new_value);
-            delta = delta.max((v_old - state.borrow().get_value()).abs());
+            delta = delta.max((v_old - new_value).abs());
         }
 
         // Stop if the maximum change in value (delta) is smaller than the threshold
@@ -54,6 +61,7 @@ fn iterative_policy_evaluation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::chapter_04::policy::Policy;
     use crate::service::{ChartBuilder, ChartData};
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
@@ -85,6 +93,8 @@ mod tests {
 
         let mut states = vec![s1, s2, s3];
 
+        let simple_policy = Policy::new();
+
         println!("before");
         for state in states.iter() {
             println!(
@@ -94,7 +104,7 @@ mod tests {
             )
         }
 
-        iterative_policy_evaluation(&mut states, 0.9, 0.0000001);
+        iterative_policy_evaluation(&simple_policy, &mut states, 0.9, 0.0000001);
         println!("after");
         for state in states.iter() {
             println!(
