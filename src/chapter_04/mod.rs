@@ -78,11 +78,11 @@ mod tests {
         let mut a1 = Actions::new(1_f32);
         let mut a2 = Actions::new(0_f32);
         let mut a3 = Actions::new(-1_f32);
-        let mut a4 = Actions::new(5_f32);
+        let mut a4 = Actions::new(14_f32);
 
         a1.add_possible_next_state(1_f32, s_terminal.clone());
-        a2.add_possible_next_state(0.35, s2.clone());
-        a2.add_possible_next_state(0.65, s3.clone());
+        a2.add_possible_next_state(0.25, s2.clone());
+        a2.add_possible_next_state(0.75, s3.clone());
         a3.add_possible_next_state(1_f32, s_terminal.clone());
         a4.add_possible_next_state(1_f32, s_terminal.clone());
 
@@ -104,7 +104,7 @@ mod tests {
             )
         }
 
-        iterative_policy_evaluation(&simple_policy, &mut states, 0.9, 0.0000001);
+        iterative_policy_evaluation(&simple_policy, &mut states, 0.1, 0.0000001);
         println!("after");
         for state in states.iter() {
             println!(
@@ -139,6 +139,75 @@ mod tests {
             chart_builder.add_data(data);
         }
 
+        chart_builder.create_chart().unwrap();
+    }
+
+    #[test]
+    fn test_grid_world_figure_4_1() {
+        let mut states: Vec<Rc<RefCell<State>>> = (0..16).map(|_| Rc::new(RefCell::new(State::new()))).collect();
+        assert_eq!(states.len(), 16);
+
+        for (id, state) in states.iter().enumerate() {
+            if id == 0 || id == 15 {
+                continue;
+            }
+            let row = id / 4;
+            let col = id % 4;
+            
+            let mut up_action = Actions::new(-1.0);
+            let can_move_up = row > 0;
+            let up_action_next_state_id =
+                up_action.add_possible_next_state(1.0, states[if can_move_up { id - 4 } else { id }].clone());
+            
+            let mut down_action = Actions::new(-1.0);
+            let can_move_down = row < 3;
+            down_action.add_possible_next_state(1.0, states[if can_move_down { id + 4} else { id }].clone());
+            
+            let mut left_action = Actions::new(-1.0);
+            let can_move_left = col > 0;
+            left_action.add_possible_next_state(1.0, states[if can_move_left {id -1} else { id }].clone());
+
+            let mut right_action = Actions::new(-1.0);
+            let can_move_right = col < 3;
+            right_action.add_possible_next_state(1.0, states[if can_move_right {id + 1} else {id}].clone());
+
+            state.borrow_mut().add_action(up_action);
+            state.borrow_mut().add_action(down_action);
+            state.borrow_mut().add_action(left_action);
+            state.borrow_mut().add_action(right_action);
+        }
+
+        let simple_policy = Policy::new();
+
+        println!("before");
+        for state in states.iter() {
+            println!(
+                "state id: {}, value: {}",
+                state.borrow().get_id(),
+                state.borrow().get_value()
+            )
+        }
+
+        let mut subset = states[1..15].to_vec();
+        iterative_policy_evaluation(&simple_policy, &mut subset, 0.1, 0.001);
+        println!("after");
+        for state in states.iter() {
+            println!(
+                "state id: {}, value: {}",
+                state.borrow().get_id(),
+                state.borrow().get_value()
+            )
+        }
+
+        let state_1_values = states[1].borrow().get_debug_value_arr().into_iter().enumerate().map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) }).collect::<Vec<(f32, f32)>>();
+        let chart_data_s1 = ChartData::new("State 1".to_string(), state_1_values, BLUE.into());
+        let mut chart_builder = ChartBuilder::new();
+        chart_builder
+            .set_path(PathBuf::from("output/chapter4/gridWorld.png"))
+            .set_x_label("Iterations".to_string())
+            .set_y_label("Estimated State Value".to_string())
+            .set_title("Iterative Policy Evaluation".to_string());
+        chart_builder.add_data(chart_data_s1);
         chart_builder.create_chart().unwrap();
     }
 }
