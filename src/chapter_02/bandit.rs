@@ -1,4 +1,3 @@
-
 pub struct Bandit {
     id: u32,
     reward: f32,
