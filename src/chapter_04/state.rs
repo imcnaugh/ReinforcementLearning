@@ -5,6 +5,7 @@ pub struct State {
     id: String,
     value: f32,
     actions: Vec<Actions>,
+    debug_value_arr: Vec<f32>,
 }
 
 static mut NEXT_STATE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -19,6 +20,7 @@ impl State {
             id: next_state_id,
             value: 0.0,
             actions: Vec::new(),
+            debug_value_arr: Vec::new(),
         }
     }
 
@@ -31,6 +33,7 @@ impl State {
     }
 
     pub fn set_value(&mut self, value: f32) {
+        self.debug_value_arr.push(self.value);
         self.value = value;
     }
 
@@ -40,5 +43,9 @@ impl State {
 
     pub fn get_id(&self) -> &String {
         &self.id
+    }
+
+    pub fn get_debug_value_arr(&self) -> &Vec<f32> {
+        &self.debug_value_arr
     }
 }

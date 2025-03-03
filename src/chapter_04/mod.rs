@@ -23,7 +23,7 @@ fn iterative_policy_evaluation(
         // Iterate through each state and update its value
         for mut state in states.iter_mut() {
             let v_old = state.borrow().get_value(); // Save the old value for delta computation
-            let mut new_value: f32 = 0.0;
+            let mut new_value: f32 = f32::NEG_INFINITY;
 
             // Iterate through each action in the state's action list
             for action in state.borrow().get_actions() {
@@ -54,7 +54,12 @@ fn iterative_policy_evaluation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::service::{ChartBuilder, ChartData};
+    use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
+    use std::path::PathBuf;
+    use std::sync::atomic::AtomicUsize;
+
     #[test]
     fn test_iterative_policy_evaluation() {
         let mut s1 = Rc::new(RefCell::new(State::new()));
@@ -68,8 +73,8 @@ mod tests {
         let mut a4 = Actions::new(5_f32);
 
         a1.add_possible_next_state(1_f32, s_terminal.clone());
-        a2.add_possible_next_state(0.75, s2.clone());
-        a2.add_possible_next_state(0.25, s3.clone());
+        a2.add_possible_next_state(0.35, s2.clone());
+        a2.add_possible_next_state(0.65, s3.clone());
         a3.add_possible_next_state(1_f32, s_terminal.clone());
         a4.add_possible_next_state(1_f32, s_terminal.clone());
 
@@ -89,7 +94,7 @@ mod tests {
             )
         }
 
-        iterative_policy_evaluation(&mut states, 0.9, 0.0001);
+        iterative_policy_evaluation(&mut states, 0.9, 0.0000001);
         println!("after");
         for state in states.iter() {
             println!(
@@ -98,5 +103,32 @@ mod tests {
                 state.borrow().get_value()
             )
         }
+
+        let mut styles = vec![BLUE.into(), RED.into(), GREEN.into()]
+            .into_iter()
+            .cycle();
+
+        let mut chart_builder = ChartBuilder::new();
+        chart_builder
+            .set_path(PathBuf::from("output/chapter4/iterativeConversion.png"))
+            .set_x_label("Iterations".to_string())
+            .set_y_label("Estimated State Value".to_string())
+            .set_title("Iterative Policy Evaluation".to_string());
+
+        let mut next_id: AtomicUsize = AtomicUsize::new(1);
+        for state in states {
+            let points = state
+                .borrow()
+                .get_debug_value_arr()
+                .iter()
+                .enumerate()
+                .map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) })
+                .collect::<Vec<(f32, f32)>>();
+            let next_id = next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            let data = ChartData::new(format!("State {}", next_id), points, styles.next().unwrap());
+            chart_builder.add_data(data);
+        }
+
+        chart_builder.create_chart().unwrap();
     }
 }
