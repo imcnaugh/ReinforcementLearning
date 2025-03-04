@@ -21,10 +21,14 @@ impl Policy {
     ) -> Vec<(f32, &'a Actions)> {
         let num_of_actions = state.get_actions().len();
         let even_probabilities = 1f32 / num_of_actions as f32;
-        state
+        let ret_val = state
             .get_actions()
             .iter()
             .map(|a| (even_probabilities, a))
-            .collect()
+            .collect::<Vec<(f32, &Actions)>>();
+
+        println!("retval debug: {:?}", ret_val);
+
+        ret_val
     }
 }

@@ -5,7 +5,7 @@ mod state;
 use crate::chapter_04::policy::Policy;
 pub use action::Actions;
 pub use state::State;
-use std::cell::RefCell;
+use std::cell::{BorrowError, Ref, RefCell};
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
@@ -14,6 +14,7 @@ fn iterative_policy_evaluation(
     states: &mut Vec<Rc<RefCell<State>>>,
     discount_rate: f32,
     threshold: f32,
+    iteration_count: Option<usize>,
 ) {
     let mut delta: f32 = 0.0;
     let mut iteration = 0;
@@ -25,35 +26,59 @@ fn iterative_policy_evaluation(
 
         // Iterate through each state and update its value
         for mut state in states.iter_mut() {
-            let v_old = state.borrow().get_value(); // Save the old value for delta computation
-            let mut new_value: f32 = f32::NEG_INFINITY;
+            let mut state = state.borrow_mut();
+
+            let v_old = state.get_value(); // Save the old value for delta computation
+            let mut new_value: f32 = 0_f32;
+            let action_count = state.get_actions().len();
+            let action_probability = 1.0 / action_count as f32;
 
             // Iterate through each action in the state's action list
-            for (action_probability, action) in
-                policy.get_probabilities_for_each_action_of_state(&state.borrow())
+            for action in state.get_actions().iter()
             {
                 let mut action_value = 0.0;
 
                 // Calculate the expected value for each possible next state and reward
                 for (next_state_probability, next_state) in action.get_possible_next_states() {
-                    action_value += action_probability
-                        * (next_state_probability
-                            * (action.get_reward()
-                                + discount_rate * next_state.borrow().get_value()));
+                    match next_state.try_borrow() {
+                        Ok(next_state) => {
+                            let next_state_value_time_discount_rate = discount_rate * next_state.get_value();
+                            let action_reward_plus_next_state_value = action.get_reward() + next_state_value_time_discount_rate;
+                            let next_state_prob_time_next_state_total_reward = next_state_probability * action_reward_plus_next_state_value;
+                            let policy_prob_times_action_total_reward = action_probability * next_state_prob_time_next_state_total_reward;
+                            action_value += policy_prob_times_action_total_reward;
+                        }
+                        Err(_) => {
+                            let next_state_value_time_discount_rate = discount_rate * state.get_value();
+                            let action_reward_plus_next_state_value = action.get_reward() + next_state_value_time_discount_rate;
+                            let next_state_prob_time_next_state_total_reward = next_state_probability * action_reward_plus_next_state_value;
+                            let policy_prob_times_action_total_reward = action_probability * next_state_prob_time_next_state_total_reward;
+                            action_value += policy_prob_times_action_total_reward;
+                        }
+                    }
                 }
 
-                new_value = new_value.max(action_value); // Take the action that maximizes the value
+                new_value = new_value + action_value; // Take the action that maximizes the value
             }
 
             // Update the state's value and calculate the maximum change (delta)
-            state.borrow_mut().set_value(new_value);
+            state.set_value(new_value);
             delta = delta.max((v_old - new_value).abs());
         }
 
-        // Stop if the maximum change in value (delta) is smaller than the threshold
-        if delta < threshold {
-            println!("Policy Evaluation converged after {} iterations", iteration);
-            break;
+        match iteration_count {
+            Some(count) => {
+                if iteration >= count {
+                    println!("Policy Evaluation converged after {} iterations", iteration);
+                    break;
+                }
+            }
+            None => {
+                if delta < threshold {
+                    println!("Policy Evaluation converged after {} iterations", iteration);
+                    break;
+                }
+            }
         }
     }
 }
@@ -104,7 +129,7 @@ mod tests {
             )
         }
 
-        iterative_policy_evaluation(&simple_policy, &mut states, 0.1, 0.0000001);
+        iterative_policy_evaluation(&simple_policy, &mut states, 0.1, 0.0000001, None);
         println!("after");
         for state in states.iter() {
             println!(
@@ -189,7 +214,8 @@ mod tests {
         }
 
         let mut subset = states[1..15].to_vec();
-        iterative_policy_evaluation(&simple_policy, &mut subset, 0.0, 0.001);
+
+        iterative_policy_evaluation(&simple_policy, &mut subset, 1.0, 0.000001, None);
         println!("after");
         for state in states.iter() {
             println!(
@@ -209,5 +235,27 @@ mod tests {
             .set_title("Iterative Policy Evaluation".to_string());
         chart_builder.add_data(chart_data_s1);
         chart_builder.create_chart().unwrap();
+    }
+
+    #[test]
+    fn is_state_updating_itself() {
+        let s1 = Rc::new(RefCell::new(State::new()));
+        let s2 = Rc::new(RefCell::new(State::new()));
+        let s3 = Rc::new(RefCell::new(State::new()));
+
+        let mut a1 = Actions::new(1_f32);
+        let mut a2 = Actions::new(1_f32);
+
+        a1.add_possible_next_state(1_f32, s2.clone());
+        a2.add_possible_next_state(1_f32, s3.clone());
+
+        s1.borrow_mut().add_action(a1);
+        s2.borrow_mut().add_action(a2);
+
+        let mut states = vec![s1, s2];
+
+        let simple_policy = Policy::new();
+
+        iterative_policy_evaluation(&simple_policy, &mut states, 0.7, 0.01, Some(10));
     }
 }

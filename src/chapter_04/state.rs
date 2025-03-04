@@ -1,6 +1,7 @@
 use crate::chapter_04::Actions;
 use std::sync::atomic::AtomicUsize;
 
+#[derive(Debug)]
 pub struct State {
     id: String,
     value: f32,

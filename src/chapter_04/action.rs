@@ -3,6 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
+#[derive(Debug)]
 pub struct Actions {
     id: String,
     reward: f32,
