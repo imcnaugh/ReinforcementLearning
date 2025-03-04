@@ -189,7 +189,7 @@ mod tests {
         }
 
         let mut subset = states[1..15].to_vec();
-        iterative_policy_evaluation(&simple_policy, &mut subset, 0.1, 0.001);
+        iterative_policy_evaluation(&simple_policy, &mut subset, 0.0, 0.001);
         println!("after");
         for state in states.iter() {
             println!(
