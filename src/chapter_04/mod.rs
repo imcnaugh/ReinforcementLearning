@@ -5,7 +5,7 @@ mod state;
 use crate::chapter_04::policy::Policy;
 pub use action::Actions;
 pub use state::State;
-use std::cell::{BorrowError, Ref, RefCell};
+use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
@@ -26,43 +26,32 @@ fn iterative_policy_evaluation(
 
         // Iterate through each state and update its value
         for mut state in states.iter_mut() {
-            let mut state = state.borrow_mut();
-
-            let v_old = state.get_value(); // Save the old value for delta computation
+            let v_old = state.borrow().get_value(); // Save the old value for delta computation
             let mut new_value: f32 = 0_f32;
-            let action_count = state.get_actions().len();
-            let action_probability = 1.0 / action_count as f32;
 
             // Iterate through each action in the state's action list
-            for action in state.get_actions().iter()
+            for (action_probability, action) in
+                policy.get_probabilities_for_each_action_of_state(&state.borrow())
             {
-                let mut action_value = 0.0;
-
-                // Calculate the expected value for each possible next state and reward
-                for (next_state_probability, next_state) in action.get_possible_next_states() {
-                    match next_state.try_borrow() {
-                        Ok(next_state) => {
-                            let next_state_value_time_discount_rate = discount_rate * next_state.get_value();
-                            let action_reward_plus_next_state_value = action.get_reward() + next_state_value_time_discount_rate;
-                            let next_state_prob_time_next_state_total_reward = next_state_probability * action_reward_plus_next_state_value;
-                            let policy_prob_times_action_total_reward = action_probability * next_state_prob_time_next_state_total_reward;
-                            action_value += policy_prob_times_action_total_reward;
-                        }
-                        Err(_) => {
-                            let next_state_value_time_discount_rate = discount_rate * state.get_value();
-                            let action_reward_plus_next_state_value = action.get_reward() + next_state_value_time_discount_rate;
-                            let next_state_prob_time_next_state_total_reward = next_state_probability * action_reward_plus_next_state_value;
-                            let policy_prob_times_action_total_reward = action_probability * next_state_prob_time_next_state_total_reward;
-                            action_value += policy_prob_times_action_total_reward;
-                        }
-                    }
-                }
-
-                new_value = new_value + action_value; // Take the action that maximizes the value
+                new_value += action
+                    .get_possible_next_states()
+                    .iter()
+                    .map(|(next_state_probability, next_state)| {
+                        let next_state_value_time_discount_rate =
+                            discount_rate * next_state.borrow().get_value();
+                        let action_reward_plus_next_state_value =
+                            action.get_reward() + next_state_value_time_discount_rate;
+                        let next_state_prob_time_next_state_total_reward =
+                            next_state_probability * action_reward_plus_next_state_value;
+                        let policy_prob_times_action_total_reward =
+                            action_probability * next_state_prob_time_next_state_total_reward;
+                        policy_prob_times_action_total_reward
+                    })
+                    .sum::<f32>(); // Take the action that maximizes the value
             }
 
             // Update the state's value and calculate the maximum change (delta)
-            state.set_value(new_value);
+            state.borrow_mut().set_value(new_value);
             delta = delta.max((v_old - new_value).abs());
         }
 
@@ -169,7 +158,9 @@ mod tests {
 
     #[test]
     fn test_grid_world_figure_4_1() {
-        let mut states: Vec<Rc<RefCell<State>>> = (0..16).map(|_| Rc::new(RefCell::new(State::new()))).collect();
+        let mut states: Vec<Rc<RefCell<State>>> = (0..16)
+            .map(|_| Rc::new(RefCell::new(State::new())))
+            .collect();
         assert_eq!(states.len(), 16);
 
         for (id, state) in states.iter().enumerate() {
@@ -178,23 +169,34 @@ mod tests {
             }
             let row = id / 4;
             let col = id % 4;
-            
+
             let mut up_action = Actions::new(-1.0);
             let can_move_up = row > 0;
-            let up_action_next_state_id =
-                up_action.add_possible_next_state(1.0, states[if can_move_up { id - 4 } else { id }].clone());
-            
+            let up_action_next_state_id = up_action.add_possible_next_state(
+                1.0,
+                states[if can_move_up { id - 4 } else { id }].clone(),
+            );
+
             let mut down_action = Actions::new(-1.0);
             let can_move_down = row < 3;
-            down_action.add_possible_next_state(1.0, states[if can_move_down { id + 4} else { id }].clone());
-            
+            down_action.add_possible_next_state(
+                1.0,
+                states[if can_move_down { id + 4 } else { id }].clone(),
+            );
+
             let mut left_action = Actions::new(-1.0);
             let can_move_left = col > 0;
-            left_action.add_possible_next_state(1.0, states[if can_move_left {id -1} else { id }].clone());
+            left_action.add_possible_next_state(
+                1.0,
+                states[if can_move_left { id - 1 } else { id }].clone(),
+            );
 
             let mut right_action = Actions::new(-1.0);
             let can_move_right = col < 3;
-            right_action.add_possible_next_state(1.0, states[if can_move_right {id + 1} else {id}].clone());
+            right_action.add_possible_next_state(
+                1.0,
+                states[if can_move_right { id + 1 } else { id }].clone(),
+            );
 
             state.borrow_mut().add_action(up_action);
             state.borrow_mut().add_action(down_action);
@@ -225,7 +227,13 @@ mod tests {
             )
         }
 
-        let state_1_values = states[1].borrow().get_debug_value_arr().into_iter().enumerate().map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) }).collect::<Vec<(f32, f32)>>();
+        let state_1_values = states[1]
+            .borrow()
+            .get_debug_value_arr()
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) })
+            .collect::<Vec<(f32, f32)>>();
         let chart_data_s1 = ChartData::new("State 1".to_string(), state_1_values, BLUE.into());
         let mut chart_builder = ChartBuilder::new();
         chart_builder
