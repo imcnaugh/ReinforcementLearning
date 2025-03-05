@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
 #[derive(Debug)]
-pub struct Actions {
+pub struct Action {
     id: String,
     possible_next_states: Vec<PossibleNextState>,
 }
@@ -18,13 +18,13 @@ pub struct PossibleNextState {
 
 static mut NEXT_ACTION_ID: AtomicUsize = AtomicUsize::new(0);
 
-impl Actions {
+impl Action {
     pub fn new() -> Self {
         let next_action_id =
             unsafe { NEXT_ACTION_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) };
         let next_action_id = next_action_id.to_string();
 
-        Actions {
+        Action {
             id: next_action_id,
             possible_next_states: Vec::new(),
         }

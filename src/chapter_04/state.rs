@@ -1,11 +1,11 @@
-use crate::chapter_04::Actions;
+use crate::chapter_04::Action;
 use std::sync::atomic::AtomicUsize;
 
 #[derive(Debug)]
 pub struct State {
     id: String,
     value: f32,
-    actions: Vec<Actions>,
+    actions: Vec<Action>,
     debug_value_arr: Vec<f32>,
 }
 
@@ -25,7 +25,7 @@ impl State {
         }
     }
 
-    pub fn add_action(&mut self, action: Actions) {
+    pub fn add_action(&mut self, action: Action) {
         self.actions.push(action);
     }
 
@@ -38,7 +38,7 @@ impl State {
         self.value = value;
     }
 
-    pub fn get_actions(&self) -> &Vec<Actions> {
+    pub fn get_actions(&self) -> &Vec<Action> {
         &self.actions
     }
 

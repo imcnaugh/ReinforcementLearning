@@ -3,7 +3,7 @@ mod policy;
 mod state;
 
 use crate::chapter_04::policy::Policy;
-pub use action::Actions;
+pub use action::Action;
 pub use state::State;
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
@@ -68,10 +68,10 @@ mod tests {
         let mut s3 = Rc::new(RefCell::new(State::new()));
         let s_terminal = Rc::new(RefCell::new(State::new()));
 
-        let mut a1 = Actions::new();
-        let mut a2 = Actions::new();
-        let mut a3 = Actions::new();
-        let mut a4 = Actions::new();
+        let mut a1 = Action::new();
+        let mut a2 = Action::new();
+        let mut a3 = Action::new();
+        let mut a4 = Action::new();
 
         a1.add_possible_next_state(1_f32, s_terminal.clone(), 1_f32);
         a2.add_possible_next_state(0.25, s2.clone(), 0_f32);
@@ -149,7 +149,7 @@ mod tests {
             let row = id / 4;
             let col = id % 4;
 
-            let mut up_action = Actions::new();
+            let mut up_action = Action::new();
             let can_move_up = row > 0;
             let up_action_next_state_id = up_action.add_possible_next_state(
                 1.0,
@@ -157,7 +157,7 @@ mod tests {
                 -1_f32,
             );
 
-            let mut down_action = Actions::new();
+            let mut down_action = Action::new();
             let can_move_down = row < 3;
             down_action.add_possible_next_state(
                 1.0,
@@ -165,7 +165,7 @@ mod tests {
                 -1_f32,
             );
 
-            let mut left_action = Actions::new();
+            let mut left_action = Action::new();
             let can_move_left = col > 0;
             left_action.add_possible_next_state(
                 1.0,
@@ -173,7 +173,7 @@ mod tests {
                 -1_f32,
             );
 
-            let mut right_action = Actions::new();
+            let mut right_action = Action::new();
             let can_move_right = col < 3;
             right_action.add_possible_next_state(
                 1.0,
@@ -234,8 +234,8 @@ mod tests {
         let s2 = Rc::new(RefCell::new(State::new()));
         let s3 = Rc::new(RefCell::new(State::new()));
 
-        let mut a1 = Actions::new();
-        let mut a2 = Actions::new();
+        let mut a1 = Action::new();
+        let mut a2 = Action::new();
 
         a1.add_possible_next_state(1_f32, s2.clone(), -1_f32);
         a2.add_possible_next_state(1_f32, s3.clone(), -1_f32);
