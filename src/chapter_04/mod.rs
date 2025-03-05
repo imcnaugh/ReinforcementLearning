@@ -27,28 +27,7 @@ fn iterative_policy_evaluation(
         // Iterate through each state and update its value
         for mut state in states.iter_mut() {
             let v_old = state.borrow().get_value(); // Save the old value for delta computation
-            let mut new_value: f32 = 0_f32;
-
-            // Iterate through each action in the state's action list
-            for (action_probability, action) in
-                policy.get_probabilities_for_each_action_of_state(&state.borrow())
-            {
-                new_value += action
-                    .get_possible_next_states()
-                    .iter()
-                    .map(|(next_state_probability, next_state)| {
-                        let next_state_value_time_discount_rate =
-                            discount_rate * next_state.borrow().get_value();
-                        let action_reward_plus_next_state_value =
-                            action.get_reward() + next_state_value_time_discount_rate;
-                        let next_state_prob_time_next_state_total_reward =
-                            next_state_probability * action_reward_plus_next_state_value;
-                        let policy_prob_times_action_total_reward =
-                            action_probability * next_state_prob_time_next_state_total_reward;
-                        policy_prob_times_action_total_reward
-                    })
-                    .sum::<f32>(); // Take the action that maximizes the value
-            }
+            let new_value: f32 = policy.get_value_of_state(&state.borrow(), discount_rate);
 
             // Update the state's value and calculate the maximum change (delta)
             state.borrow_mut().set_value(new_value);
@@ -89,16 +68,16 @@ mod tests {
         let mut s3 = Rc::new(RefCell::new(State::new()));
         let s_terminal = Rc::new(RefCell::new(State::new()));
 
-        let mut a1 = Actions::new(1_f32);
-        let mut a2 = Actions::new(0_f32);
-        let mut a3 = Actions::new(-1_f32);
-        let mut a4 = Actions::new(14_f32);
+        let mut a1 = Actions::new();
+        let mut a2 = Actions::new();
+        let mut a3 = Actions::new();
+        let mut a4 = Actions::new();
 
-        a1.add_possible_next_state(1_f32, s_terminal.clone());
-        a2.add_possible_next_state(0.25, s2.clone());
-        a2.add_possible_next_state(0.75, s3.clone());
-        a3.add_possible_next_state(1_f32, s_terminal.clone());
-        a4.add_possible_next_state(1_f32, s_terminal.clone());
+        a1.add_possible_next_state(1_f32, s_terminal.clone(), 1_f32);
+        a2.add_possible_next_state(0.25, s2.clone(), 0_f32);
+        a2.add_possible_next_state(0.75, s3.clone(), 0_f32);
+        a3.add_possible_next_state(1_f32, s_terminal.clone(), 14_f32);
+        a4.add_possible_next_state(1_f32, s_terminal.clone(), -1_f32);
 
         s1.borrow_mut().add_action(a1);
         s1.borrow_mut().add_action(a2);
@@ -170,32 +149,36 @@ mod tests {
             let row = id / 4;
             let col = id % 4;
 
-            let mut up_action = Actions::new(-1.0);
+            let mut up_action = Actions::new();
             let can_move_up = row > 0;
             let up_action_next_state_id = up_action.add_possible_next_state(
                 1.0,
                 states[if can_move_up { id - 4 } else { id }].clone(),
+                -1_f32,
             );
 
-            let mut down_action = Actions::new(-1.0);
+            let mut down_action = Actions::new();
             let can_move_down = row < 3;
             down_action.add_possible_next_state(
                 1.0,
                 states[if can_move_down { id + 4 } else { id }].clone(),
+                -1_f32,
             );
 
-            let mut left_action = Actions::new(-1.0);
+            let mut left_action = Actions::new();
             let can_move_left = col > 0;
             left_action.add_possible_next_state(
                 1.0,
                 states[if can_move_left { id - 1 } else { id }].clone(),
+                -1_f32,
             );
 
-            let mut right_action = Actions::new(-1.0);
+            let mut right_action = Actions::new();
             let can_move_right = col < 3;
             right_action.add_possible_next_state(
                 1.0,
                 states[if can_move_right { id + 1 } else { id }].clone(),
+                -1_f32,
             );
 
             state.borrow_mut().add_action(up_action);
@@ -217,7 +200,7 @@ mod tests {
 
         let mut subset = states[1..15].to_vec();
 
-        iterative_policy_evaluation(&simple_policy, &mut subset, 1.0, 0.000001, None);
+        iterative_policy_evaluation(&simple_policy, &mut subset, 1.0, 0.001, None);
         println!("after");
         for state in states.iter() {
             println!(
@@ -251,11 +234,11 @@ mod tests {
         let s2 = Rc::new(RefCell::new(State::new()));
         let s3 = Rc::new(RefCell::new(State::new()));
 
-        let mut a1 = Actions::new(1_f32);
-        let mut a2 = Actions::new(1_f32);
+        let mut a1 = Actions::new();
+        let mut a2 = Actions::new();
 
-        a1.add_possible_next_state(1_f32, s2.clone());
-        a2.add_possible_next_state(1_f32, s3.clone());
+        a1.add_possible_next_state(1_f32, s2.clone(), -1_f32);
+        a2.add_possible_next_state(1_f32, s3.clone(), -1_f32);
 
         s1.borrow_mut().add_action(a1);
         s2.borrow_mut().add_action(a2);

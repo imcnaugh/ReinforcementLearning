@@ -1,6 +1,4 @@
 use crate::chapter_04::{Actions, State};
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
 
 pub struct Policy {
@@ -28,5 +26,12 @@ impl Policy {
             .iter()
             .map(|a| (even_probabilities, a))
             .collect::<Vec<(f32, &Actions)>>()
+    }
+
+    pub fn get_value_of_state(&self, state: &State, discount_rate: f32) -> f32 {
+        self.get_probabilities_for_each_action_of_state(state)
+            .iter()
+            .map(|(prob, action)| prob * action.get_value(discount_rate))
+            .sum()
     }
 }
