@@ -2,7 +2,7 @@ mod action;
 mod policy;
 mod state;
 
-use crate::chapter_04::policy::Policy;
+use crate::chapter_04::policy::{Policy, RandomPolicy};
 pub use action::Action;
 pub use state::State;
 use std::cell::RefCell;
@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 fn iterative_policy_evaluation(
-    policy: &Policy,
+    policy: &dyn Policy,
     states: &mut Vec<Rc<RefCell<State>>>,
     discount_rate: f32,
     threshold: f32,
@@ -54,7 +54,7 @@ fn iterative_policy_evaluation(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chapter_04::policy::Policy;
+    use crate::chapter_04::policy::{GreedyPolicy, Policy, RandomPolicy};
     use crate::service::{ChartBuilder, ChartData};
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
@@ -86,7 +86,7 @@ mod tests {
 
         let mut states = vec![s1, s2, s3];
 
-        let simple_policy = Policy::new();
+        let simple_policy = RandomPolicy::new();
 
         println!("before");
         for state in states.iter() {
@@ -187,7 +187,7 @@ mod tests {
             state.borrow_mut().add_action(right_action);
         }
 
-        let simple_policy = Policy::new();
+        let simple_policy = GreedyPolicy::new();
 
         println!("before");
         for state in states.iter() {
@@ -245,7 +245,7 @@ mod tests {
 
         let mut states = vec![s1, s2];
 
-        let simple_policy = Policy::new();
+        let simple_policy = RandomPolicy::new();
 
         iterative_policy_evaluation(&simple_policy, &mut states, 0.7, 0.01, Some(10));
     }
