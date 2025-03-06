@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::chapter_04::{Action, State};
 use std::sync::atomic::AtomicUsize;
 
@@ -88,5 +89,45 @@ impl Policy for GreedyPolicy {
         let action_probabilities = 1f32 / *max_actions_count as f32;
 
         max_actions.iter().map(|(_, a)| (action_probabilities, *a)).collect::<Vec<(f32, &Action)>>()
+    }
+}
+
+pub struct MutablePolicy {
+    id: String,
+    state_and_action_probabilities: HashMap<String, Vec<(f32, String)>>,
+}
+
+impl MutablePolicy {
+    pub fn new(states: Vec<&State>) -> Self {
+        let next_policy_id =
+            unsafe { NEXT_POLICY_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) };
+        let next_policy_id = next_policy_id.to_string();
+
+        let state_and_action_probabilities: HashMap<String, Vec<(f32, String)>> = states.iter().map(|s| {
+            let prob = 1_f32 / s.get_actions().len() as f32;
+            let value = s.get_actions().iter().map(|a| -> (f32, String) {
+                (prob, a.get_id().to_string())
+            }).collect::<Vec<(f32, String)>>();
+            (s.get_id().clone(), value)
+        }).collect();
+
+        MutablePolicy {
+            id: next_policy_id,
+            state_and_action_probabilities,
+        }
+    }
+}
+
+impl Policy for MutablePolicy {
+    fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
+
+    fn get_probabilities_for_each_action_of_state<'a>(&self, state: &'a State) -> Vec<(f32, &'a Action)> {
+        state.get_actions().iter().map(|a| {
+            // TODO refactor, this is gross but it should work
+            let prob = self.state_and_action_probabilities.get(state.get_id()).unwrap().iter().find(|(_, id)| id == a.get_id()).unwrap().0;
+            (prob, a)
+        }).collect()
     }
 }

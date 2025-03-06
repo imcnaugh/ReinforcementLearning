@@ -50,6 +50,10 @@ impl Action {
             .map(|p_ns| p_ns.get_value(discount_rate))
             .sum()
     }
+
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
 }
 
 impl PossibleNextState {
