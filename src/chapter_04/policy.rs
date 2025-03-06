@@ -116,6 +116,72 @@ impl MutablePolicy {
             state_and_action_probabilities,
         }
     }
+
+    pub fn converge(&mut self, mut states: Vec<&State>, discount_rate: f32, threshold: f32) {
+        let mut delta: f32 = 0.0;
+        let mut iteration = 0;
+
+        loop {
+            loop {
+                delta = 0.0;
+                iteration += 1;
+
+                // Iterate through each state and update its value
+                for mut state in states.iter_mut() {
+                    let v_old = state.borrow().get_value(); // Save the old value for delta computation
+                    let new_value: f32 = self.get_value_of_state(&state.borrow(), discount_rate);
+
+                    // Update the state's value and calculate the maximum change (delta)
+                    state.borrow_mut().set_value(new_value);
+                    delta = delta.max((v_old - new_value).abs());
+                }
+
+                if delta < threshold {
+                    break;
+                }
+            }
+
+            let mut policy_stable = true;
+            for state in states.iter() {
+                let mut max_value = f32::MIN;
+                let mut max_action_ids = Vec::new();
+
+                state.get_actions().iter().for_each(|a| {
+                    let value = a.get_value(discount_rate);
+                    if value > max_value {
+                        max_action_ids = vec![a.get_id().to_string()];
+                        max_value = value;
+                    } else if value == max_value {
+                        max_action_ids.push(a.get_id().to_string());
+                    }
+                });
+
+                let expected_odds = 1 / max_action_ids.len() as f32;
+
+                let new_probs: Vec<(f32, String)> = self.state_and_action_probabilities.get(state.get_id()).unwrap().iter().map(|(prob, a_id)| {
+                    if max_action_ids.contains(&a_id) {
+                        if prob != expected_odds {
+                            policy_stable = false;
+                        }
+                        (expected_odds, a_id.to_string())
+                    } else {
+                        if prob != 0.0 {
+                            policy_stable = false;
+                        }
+                        (0.0, a_id.to_string())
+                    }
+                }).collect();
+
+                self.state_and_action_probabilities.insert(state.get_id().clone(), new_probs);
+
+            }
+
+            if policy_stable {
+                break;
+            }
+        }
+
+    }
 }
 
 impl Policy for MutablePolicy {
