@@ -54,7 +54,7 @@ fn iterative_policy_evaluation(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::chapter_04::policy::{GreedyPolicy, Policy, RandomPolicy};
+    use crate::chapter_04::policy::{GreedyPolicy, MutablePolicy, Policy, RandomPolicy};
     use crate::service::{ChartBuilder, ChartData};
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
@@ -248,5 +248,80 @@ mod tests {
         let simple_policy = RandomPolicy::new();
 
         iterative_policy_evaluation(&simple_policy, &mut states, 0.7, 0.01, Some(10));
+    }
+
+    #[test]
+    fn test_grid_world_convergence_with_policy_iteration() {
+        let mut states: Vec<Rc<RefCell<State>>> = (0..16)
+            .map(|_| Rc::new(RefCell::new(State::new())))
+            .collect();
+        assert_eq!(states.len(), 16);
+
+        for (id, state) in states.iter().enumerate() {
+            if id == 0 || id == 15 {
+                continue;
+            }
+            let row = id / 4;
+            let col = id % 4;
+
+            let mut up_action = Action::new();
+            let can_move_up = row > 0;
+            let up_action_next_state_id = up_action.add_possible_next_state(
+                1.0,
+                states[if can_move_up { id - 4 } else { id }].clone(),
+                -1_f32,
+            );
+
+            let mut down_action = Action::new();
+            let can_move_down = row < 3;
+            down_action.add_possible_next_state(
+                1.0,
+                states[if can_move_down { id + 4 } else { id }].clone(),
+                -1_f32,
+            );
+
+            let mut left_action = Action::new();
+            let can_move_left = col > 0;
+            left_action.add_possible_next_state(
+                1.0,
+                states[if can_move_left { id - 1 } else { id }].clone(),
+                -1_f32,
+            );
+
+            let mut right_action = Action::new();
+            let can_move_right = col < 3;
+            right_action.add_possible_next_state(
+                1.0,
+                states[if can_move_right { id + 1 } else { id }].clone(),
+                -1_f32,
+            );
+
+            state.borrow_mut().add_action(up_action);
+            state.borrow_mut().add_action(down_action);
+            state.borrow_mut().add_action(left_action);
+            state.borrow_mut().add_action(right_action);
+        }
+
+
+        let subset = states[1..15].to_vec();
+        let mut simple_policy = MutablePolicy::new(&subset);
+
+        for state in states.iter() {
+            println!(
+                "state id: {}, value: {}",
+                state.borrow().get_id(),
+                state.borrow().get_value()
+            )
+        }
+
+        simple_policy.converge(subset, 1.0, 0.00001);
+
+        for state in states.iter() {
+            println!(
+                "state id: {}, value: {}",
+                state.borrow().get_id(),
+                state.borrow().get_value()
+            )
+        }
     }
 }

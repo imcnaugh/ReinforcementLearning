@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use crate::chapter_04::{Action, State};
 use std::sync::atomic::AtomicUsize;
 
@@ -98,12 +100,13 @@ pub struct MutablePolicy {
 }
 
 impl MutablePolicy {
-    pub fn new(states: Vec<&State>) -> Self {
+    pub fn new(states: &Vec<Rc<RefCell<State>>>) -> Self {
         let next_policy_id =
             unsafe { NEXT_POLICY_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) };
         let next_policy_id = next_policy_id.to_string();
 
         let state_and_action_probabilities: HashMap<String, Vec<(f32, String)>> = states.iter().map(|s| {
+            let s = s.borrow();
             let prob = 1_f32 / s.get_actions().len() as f32;
             let value = s.get_actions().iter().map(|a| -> (f32, String) {
                 (prob, a.get_id().to_string())
@@ -117,7 +120,7 @@ impl MutablePolicy {
         }
     }
 
-    pub fn converge(&mut self, mut states: Vec<&State>, discount_rate: f32, threshold: f32) {
+    pub fn converge(&mut self, mut states: Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
         let mut delta: f32 = 0.0;
         let mut iteration = 0;
 
@@ -129,7 +132,9 @@ impl MutablePolicy {
                 // Iterate through each state and update its value
                 for mut state in states.iter_mut() {
                     let v_old = state.borrow().get_value(); // Save the old value for delta computation
-                    let new_value: f32 = self.get_value_of_state(&state.borrow(), discount_rate);
+                    let policy_as_trait_object = self as &dyn Policy;
+                    let new_value: f32 = policy_as_trait_object.get_value_of_state(&state.borrow(), discount_rate);
+                    
 
                     // Update the state's value and calculate the maximum change (delta)
                     state.borrow_mut().set_value(new_value);
@@ -146,7 +151,7 @@ impl MutablePolicy {
                 let mut max_value = f32::MIN;
                 let mut max_action_ids = Vec::new();
 
-                state.get_actions().iter().for_each(|a| {
+                state.borrow().get_actions().iter().for_each(|a| {
                     let value = a.get_value(discount_rate);
                     if value > max_value {
                         max_action_ids = vec![a.get_id().to_string()];
@@ -156,23 +161,23 @@ impl MutablePolicy {
                     }
                 });
 
-                let expected_odds = 1 / max_action_ids.len() as f32;
+                let expected_odds: f32 = 1.0_f32 / (max_action_ids.len() as f32);
 
-                let new_probs: Vec<(f32, String)> = self.state_and_action_probabilities.get(state.get_id()).unwrap().iter().map(|(prob, a_id)| {
+                let new_probs: Vec<(f32, String)> = self.state_and_action_probabilities.get(state.borrow().get_id()).unwrap().iter().map(|(prob, a_id)| {
                     if max_action_ids.contains(&a_id) {
-                        if prob != expected_odds {
+                        if prob.clone() != expected_odds {
                             policy_stable = false;
                         }
                         (expected_odds, a_id.to_string())
                     } else {
-                        if prob != 0.0 {
+                        if prob.clone() != 0.0 {
                             policy_stable = false;
                         }
-                        (0.0, a_id.to_string())
+                        (0.0_f32, a_id.to_string())
                     }
                 }).collect();
 
-                self.state_and_action_probabilities.insert(state.get_id().clone(), new_probs);
+                self.state_and_action_probabilities.insert(state.borrow().get_id().clone(), new_probs);
 
             }
 
