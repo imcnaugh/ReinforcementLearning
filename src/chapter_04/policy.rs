@@ -120,11 +120,27 @@ impl MutablePolicy {
         }
     }
 
+    pub fn get_optimal_action_for_state<'a>(&self, state: &'a State) -> &'a Action {
+        let mut max_value = f32::MIN;
+        let mut max_action_ids = String::new();
+        state.get_actions().iter().for_each(|a| {
+            let value = a.get_value(1.0);
+            if value > max_value {
+                max_action_ids = a.get_id().to_string();
+                max_value = value;
+            }
+        });
+        let action = state.get_actions().iter().find(|a| a.get_id() == max_action_ids).unwrap();
+        action
+    }
+
     pub fn converge(&mut self, mut states: Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
         let mut delta: f32 = 0.0;
         let mut iteration = 0;
+        println!("starting policy convergence with threshold: {}", threshold);
 
         loop {
+            println!("starting to estimate state value for policy");
             loop {
                 delta = 0.0;
                 iteration += 1;
@@ -132,9 +148,8 @@ impl MutablePolicy {
                 // Iterate through each state and update its value
                 for mut state in states.iter_mut() {
                     let v_old = state.borrow().get_value(); // Save the old value for delta computation
-                    let policy_as_trait_object = self as &dyn Policy;
-                    let new_value: f32 = policy_as_trait_object.get_value_of_state(&state.borrow(), discount_rate);
-                    
+                    let new_value: f32 = <dyn Policy>::get_value_of_state(self, &state.borrow(), discount_rate);
+
 
                     // Update the state's value and calculate the maximum change (delta)
                     state.borrow_mut().set_value(new_value);
@@ -145,6 +160,8 @@ impl MutablePolicy {
                     break;
                 }
             }
+            println!("finished estimating state value for policy");
+            println!("starting to update policy");
 
             let mut policy_stable = true;
             for state in states.iter() {
@@ -180,6 +197,8 @@ impl MutablePolicy {
                 self.state_and_action_probabilities.insert(state.borrow().get_id().clone(), new_probs);
 
             }
+
+            println!("finished updating policy, policy is stable: {}", policy_stable);
 
             if policy_stable {
                 break;

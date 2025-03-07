@@ -6,6 +6,7 @@ use std::sync::atomic::AtomicUsize;
 #[derive(Debug)]
 pub struct Action {
     id: String,
+    description: Option<String>,
     possible_next_states: Vec<PossibleNextState>,
 }
 
@@ -26,8 +27,17 @@ impl Action {
 
         Action {
             id: next_action_id,
+            description: None,
             possible_next_states: Vec::new(),
         }
+    }
+
+    pub fn set_description(&mut self, description: String) {
+        self.description = Some(description);
+    }
+
+    pub fn get_description(&self) -> Option<&String> {
+        self.description.as_ref()
     }
 
     pub fn add_possible_next_state(
