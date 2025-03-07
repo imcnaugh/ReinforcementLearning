@@ -6,6 +6,7 @@ use crate::chapter_04::policy::{Policy, RandomPolicy};
 pub use action::Action;
 pub use state::State;
 use std::cell::RefCell;
+use std::f64::consts::E;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
@@ -49,6 +50,11 @@ fn iterative_policy_evaluation(
             }
         }
     }
+}
+
+fn poisson_calc(rate_of_occurrence: i64, events_count: u64) -> f64 {
+    let factorial: u64 = (1..=events_count).product();
+    ((rate_of_occurrence.pow(events_count as u32) as f64) * E.powi((rate_of_occurrence * -1) as i32)) / factorial as f64
 }
 
 #[cfg(test)]
@@ -323,5 +329,19 @@ mod tests {
                 state.borrow().get_value()
             )
         }
+    }
+
+    #[test]
+    fn test_poisson_calc() {
+        let sum: f64 = (0..20).map(|i| {
+            poisson_calc(2, i)
+        }).sum();
+
+        println!("{}", sum);
+    }
+
+    #[test]
+    fn test_car_rental_example_4_2() {
+
     }
 }
