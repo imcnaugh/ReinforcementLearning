@@ -54,7 +54,9 @@ fn iterative_policy_evaluation(
 
 pub fn poisson_calc(rate_of_occurrence: i64, events_count: u64) -> f64 {
     let factorial: u64 = (1..=events_count).product();
-    ((rate_of_occurrence.pow(events_count as u32) as f64) * E.powi((rate_of_occurrence * -1) as i32)) / factorial as f64
+    ((rate_of_occurrence.pow(events_count as u32) as f64)
+        * E.powi((rate_of_occurrence * -1) as i32))
+        / factorial as f64
 }
 
 #[cfg(test)]
@@ -309,7 +311,6 @@ mod tests {
             state.borrow_mut().add_action(right_action);
         }
 
-
         let subset = states[1..15].to_vec();
         let mut simple_policy = MutablePolicy::new(&subset);
 
@@ -338,9 +339,7 @@ mod tests {
             println!("prob of {i}: {}", poisson_calc(2, i));
         });
 
-        let sum: f64 = (0..20).map(|i| {
-            poisson_calc(2, i)
-        }).sum();
+        let sum: f64 = (0..20).map(|i| poisson_calc(2, i)).sum();
 
         println!("{}", sum);
 
@@ -348,112 +347,126 @@ mod tests {
         let odds_a = (0..20).map(|i| poisson_calc(2, i)).collect::<Vec<f64>>();
         let odds_b = (0..20).map(|i| poisson_calc(3, i)).collect::<Vec<f64>>();
 
-        let sum = odds_a.iter().map(|a| {
-            odds_b.iter().map(|b| {
-                a * b
-            }).sum::<f64>()
-        }).sum::<f64>();
+        let sum = odds_a
+            .iter()
+            .map(|a| odds_b.iter().map(|b| a * b).sum::<f64>())
+            .sum::<f64>();
 
         println!("sum of both {}", sum);
     }
 
     #[test]
     fn range_test() {
-        (0..=20).for_each(|i| {
+        (-5..=5).for_each(|i| {
             println!("{}", i);
         });
     }
 
     #[test]
-    fn max_tests(){
+    fn max_tests() {
         let idk = 20.min(40);
         println!("{}", idk);
     }
 
     #[test]
     fn test_car_rental_example_4_2() {
-        let max_cars: usize = 20;
+        let max_cars: i32 = 20;
         let max_cars_moved_per_night: usize = 5;
-        let state_count = (max_cars + 1) * (max_cars + 1);
-        let mut states = (0..state_count).map(|i| {
-            let mut state = State::new();
-            state.add_action(Action::new());
-            Rc::new(RefCell::new(state))
-        }).collect::<Vec<Rc<RefCell<State>>>>();
 
-        let location_1_rental_odds = (0..=max_cars).map(|i| poisson_calc(3, i as u64)).collect::<Vec<f64>>();
-        let location_2_rental_odds = (0..=max_cars).map(|i| poisson_calc(4, i as u64)).collect::<Vec<f64>>();
-        let location_1_return_odds = (0..=max_cars).map(|i| poisson_calc(3, i as u64)).collect::<Vec<f64>>();
-        let location_2_return_odds = (0..=max_cars).map(|i| poisson_calc(2, i as u64)).collect::<Vec<f64>>();
+        let state_count = (max_cars + 1) * (max_cars + 1);
+        let mut states = (0..state_count)
+            .map(|i| {
+                let mut state = State::new();
+                state.add_action(Action::new());
+                Rc::new(RefCell::new(state))
+            })
+            .collect::<Vec<Rc<RefCell<State>>>>();
+
+        let location_1_rental_odds = (0..=max_cars)
+            .map(|i| poisson_calc(3, i as u64))
+            .collect::<Vec<f64>>();
+        let location_2_rental_odds = (0..=max_cars)
+            .map(|i| poisson_calc(4, i as u64))
+            .collect::<Vec<f64>>();
+        let location_1_return_odds = (0..=max_cars)
+            .map(|i| poisson_calc(3, i as u64))
+            .collect::<Vec<f64>>();
+        let location_2_return_odds = (0..=max_cars)
+            .map(|i| poisson_calc(2, i as u64))
+            .collect::<Vec<f64>>();
 
         states.iter().enumerate().for_each(|(index, state)| {
-            let cars_at_first_location = index / (max_cars + 1);
-            let cars_at_second_location = index % (max_cars + 1);
+            let cars_at_first_location = index / (max_cars as usize + 1);
+            let cars_at_second_location = index % (max_cars as usize + 1);
 
-            println!("cars at first location: {}, cars at second location: {}, index: {}", cars_at_first_location, cars_at_second_location, index);
+            println!(
+                "cars at first location: {}, cars at second location: {}, index: {}",
+                cars_at_first_location, cars_at_second_location, index
+            );
 
-            let mut no_cars_moved_action = Action::new();
-            no_cars_moved_action.set_description("0 moved".to_string());
+            let mut actions: Vec<Action> = vec![];
 
-            let mut l1_to_l2_moves = (1..=max_cars_moved_per_night).map(|i| {
-                let mut a = Action::new();
-                a.set_description(format!("{} -> l2", i));
-                a
-            }).collect::<Vec<Action>>();
+            for i in (max_cars_moved_per_night as i32 * -1)..=max_cars_moved_per_night as i32 {
+                let mut new_action = Action::new();
+                new_action.set_description(format!("{}", i));
 
+                let cars_moved_to_l1: i32 = i * -1;
+                let cars_moved_to_l2: i32 = i;
 
-            let mut l2_to_l1_moves = (1..=max_cars_moved_per_night).map(|i| {
-                let mut a = Action::new();
-                a.set_description(format!("{} -> l1", i));
-                a
-            }).collect::<Vec<Action>>();
+                for (l_1_rental_requests, l1rent_odds) in location_1_rental_odds.iter().enumerate()
+                {
+                    for (l_2_rental_requests, l2rent_odds) in
+                        location_2_rental_odds.iter().enumerate()
+                    {
+                        for (l_1_returned_cars, l1return_odds) in
+                            location_1_return_odds.iter().enumerate()
+                        {
+                            for (l_2_returned_cars, l2return_odds) in
+                                location_2_return_odds.iter().enumerate()
+                            {
+                                let odds =
+                                    (l1rent_odds * l2rent_odds * l1return_odds * l2return_odds)
+                                        as f32;
 
+                                let cars_at_l_1 = cars_at_first_location as i32 + cars_moved_to_l1;
+                                let cars_at_l_2 = cars_at_second_location as i32 + cars_moved_to_l2;
 
-            for (cars_rented_from_first_location, l1rent_odds) in location_1_rental_odds.iter().enumerate() {
-                let l_1_rent = cars_rented_from_first_location.min(cars_at_first_location);
-                for (cars_rented_from_second_location, l2rent_odds) in location_2_rental_odds.iter().enumerate() {
-                    let l_2_rent = cars_rented_from_second_location.min(cars_at_second_location);
-                    for (cars_returned_to_first_location, l1return_odds) in location_1_return_odds.iter().enumerate() {
-                        for (cars_returned_to_second_location, l2return_odds) in location_2_return_odds.iter().enumerate() {
-                            let cars_at_l_1 = max_cars.min(cars_at_first_location + cars_returned_to_first_location - l_1_rent);
-                            let cars_at_l_2 = max_cars.min(cars_at_second_location + cars_returned_to_second_location - l_2_rent);
-                            let reward = (l_1_rent + l_2_rent) * 10;
+                                if cars_at_l_1 < 0 || cars_at_l_2 < 0 {
+                                    continue;
+                                }
 
-                            let odds = (l1rent_odds * l2rent_odds * l1return_odds * l2return_odds) as f32;
+                                let cars_rented_at_l_1 =
+                                    l_1_rental_requests.min(cars_at_l_1 as usize);
+                                let cars_remaining_at_l_1 = max_cars.min(
+                                    cars_at_l_1 - cars_rented_at_l_1 as i32
+                                        + l_1_returned_cars as i32,
+                                );
 
-                            let new_state = states[cars_at_l_1 * (max_cars + 1) + cars_at_l_2].clone();
-                            no_cars_moved_action.add_possible_next_state(odds, new_state, reward as f32);
+                                let cars_rented_at_l_2 =
+                                    l_2_rental_requests.min(cars_at_l_2 as usize);
+                                let cars_remaining_at_l_2 = max_cars.min(
+                                    cars_at_l_2 - cars_rented_at_l_2 as i32
+                                        + l_2_returned_cars as i32,
+                                );
 
-                            (1..=max_cars_moved_per_night).for_each(|i| {
-                                let movable_l1_cars = i.min(cars_at_l_1);
-                                let movable_l1_cars = movable_l1_cars.min(max_cars - cars_at_l_2);
-
-                                let movable_l2_cars = i.min(cars_at_l_2);
-                                let movable_l2_cars = movable_l2_cars.min(max_cars - cars_at_l_1);
-
-                                let reward_from_move_to_l1 = reward as f32 - (movable_l2_cars * 2) as f32;
-                                let reward_from_move_to_l2 = reward as f32 - (movable_l1_cars * 2) as f32;
-
-                                let state_after_move_l1_to_l2 = states[((cars_at_l_1 - movable_l1_cars) * (max_cars + 1)) + (cars_at_l_2 + movable_l1_cars)].clone();
-                                let state_after_move_l2_to_l1 = states[((cars_at_l_1 + movable_l2_cars) * (max_cars + 1)) + (cars_at_l_2 - movable_l2_cars)].clone();
-
-                                let move_l1_to_l2_action = l1_to_l2_moves.get_mut(i-1).unwrap();
-                                let move_l2_to_l1_action = l2_to_l1_moves.get_mut(i-1).unwrap();
-
-                                move_l1_to_l2_action.add_possible_next_state(odds, state_after_move_l1_to_l2, reward_from_move_to_l2);
-                                move_l2_to_l1_action.add_possible_next_state(odds, state_after_move_l2_to_l1, reward_from_move_to_l1);
-                            })
+                                let reward: f32 = ((cars_rented_at_l_1 * 10) as i32
+                                    + (cars_rented_at_l_2 * 10) as i32
+                                    - (i.abs() * 2))
+                                    as f32;
+                                let next_state = states[(cars_remaining_at_l_1 * (max_cars + 1))
+                                    as usize
+                                    + cars_remaining_at_l_2 as usize]
+                                    .clone();
+                                new_action.add_possible_next_state(odds, next_state, reward);
+                            }
                         }
                     }
                 }
+
+                actions.push(new_action);
             }
 
-
-            state.borrow_mut().add_action(no_cars_moved_action);
-            l1_to_l2_moves.into_iter().for_each(move |a| {
-                state.borrow_mut().add_action(a);
-            });
-            l2_to_l1_moves.into_iter().for_each(move |a| {
+            actions.into_iter().for_each(move |a| {
                 state.borrow_mut().add_action(a);
             });
         });
@@ -464,21 +477,27 @@ mod tests {
 
         policy.converge(subset, 0.9, 0.001);
 
-        states.chunks(max_cars+1).enumerate().for_each(|(x, chunk)| {
-            let cars_at_first_location = x % (max_cars + 1);
+        states
+            .chunks((max_cars + 1) as usize)
+            .enumerate()
+            .for_each(|(x, chunk)| {
+                let cars_at_first_location = x % (max_cars + 1) as usize;
 
-
-            println!(
-                "l1 cars: {}: \t{}",
-                cars_at_first_location,
-                chunk
-                    .iter()
-                    .map(|state| policy.get_optimal_action_for_state(&state.borrow()).get_description().unwrap_or(&"".to_string()).clone())
-                    // .map(|state| format!("{:.2}",state.borrow().get_value()))
-                    .collect::<Vec<String>>()
-                    .join("\t")
-            );
-        });
+                println!(
+                    "l1 cars: {}: \t{}",
+                    cars_at_first_location,
+                    chunk
+                        .iter()
+                        .map(|state| policy
+                            .get_optimal_action_for_state(&state.borrow())
+                            .get_description()
+                            .unwrap_or(&"".to_string())
+                            .clone())
+                        // .map(|state| format!("{:.2}",state.borrow().get_value()))
+                        .collect::<Vec<String>>()
+                        .join("\t")
+                );
+            });
 
         println!();
         println!("0 .. 20");
