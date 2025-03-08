@@ -150,7 +150,6 @@ impl MutablePolicy {
                     let v_old = state.borrow().get_value(); // Save the old value for delta computation
                     let new_value: f32 = <dyn Policy>::get_value_of_state(self, &state.borrow(), discount_rate);
 
-
                     // Update the state's value and calculate the maximum change (delta)
                     state.borrow_mut().set_value(new_value);
                     delta = delta.max((v_old - new_value).abs());
