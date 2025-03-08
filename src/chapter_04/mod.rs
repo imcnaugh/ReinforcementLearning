@@ -359,9 +359,15 @@ mod tests {
 
     #[test]
     fn range_test() {
-        (0..=10).for_each(|i| {
+        (0..=20).for_each(|i| {
             println!("{}", i);
         });
+    }
+
+    #[test]
+    fn max_tests(){
+        let idk = 20.min(40);
+        println!("{}", idk);
     }
 
     #[test]
@@ -369,7 +375,7 @@ mod tests {
         let max_cars: usize = 20;
         let max_cars_moved_per_night: usize = 5;
         let state_count = (max_cars + 1) * (max_cars + 1);
-        let states = (0..state_count).map(|i| {
+        let mut states = (0..state_count).map(|i| {
             let mut state = State::new();
             state.add_action(Action::new());
             Rc::new(RefCell::new(state))
@@ -419,22 +425,23 @@ mod tests {
                             no_cars_moved_action.add_possible_next_state(odds, new_state, reward as f32);
 
                             (1..=max_cars_moved_per_night).for_each(|i| {
-                                if cars_at_l_1 >= i {
-                                    let reward_with_move = reward as i32 - (i * 2) as i32;
-                                    let new_cars_at_l_1 = cars_at_l_1 - i;
-                                    let new_cars_at_l_2 = max_cars.min(cars_at_l_2 + i);
-                                    let new_state_with_move = states[new_cars_at_l_1 * max_cars + new_cars_at_l_2].clone();
-                                    let mut action = l1_to_l2_moves.get_mut(i-1).unwrap();
-                                    action.add_possible_next_state(odds, new_state_with_move, reward_with_move as f32);
-                                }
-                                if cars_at_l_2 >= i {
-                                    let reward_with_move = reward as i32 - (i * 2) as i32;
-                                    let new_cars_at_l_1 = max_cars.min(cars_at_l_1 + i);
-                                    let new_cars_at_l_2 = cars_at_l_2 - i;
-                                    let new_state_with_move = states[new_cars_at_l_1 * max_cars + new_cars_at_l_2].clone();
-                                    let mut action = l2_to_l1_moves.get_mut(i-1).unwrap();
-                                    action.add_possible_next_state(odds, new_state_with_move, reward_with_move as f32);
-                                }
+                                let movable_l1_cars = i.min(cars_at_l_1);
+                                let movable_l1_cars = movable_l1_cars.min(max_cars - cars_at_l_2);
+
+                                let movable_l2_cars = i.min(cars_at_l_2);
+                                let movable_l2_cars = movable_l2_cars.min(max_cars - cars_at_l_1);
+
+                                let reward_from_move_to_l1 = reward as f32 - (movable_l2_cars * 2) as f32;
+                                let reward_from_move_to_l2 = reward as f32 - (movable_l1_cars * 2) as f32;
+
+                                let state_after_move_l1_to_l2 = states[((cars_at_l_1 - movable_l1_cars) * max_cars) + (cars_at_l_2 + movable_l1_cars)].clone();
+                                let state_after_move_l2_to_l1 = states[((cars_at_l_1 + movable_l2_cars) * max_cars) + (cars_at_l_2 - movable_l2_cars)].clone();
+
+                                let move_l1_to_l2_action = l1_to_l2_moves.get_mut(i-1).unwrap();
+                                let move_l2_to_l1_action = l2_to_l1_moves.get_mut(i-1).unwrap();
+
+                                move_l1_to_l2_action.add_possible_next_state(odds, state_after_move_l1_to_l2, reward_from_move_to_l2);
+                                move_l2_to_l1_action.add_possible_next_state(odds, state_after_move_l2_to_l1, reward_from_move_to_l1);
                             })
                         }
                     }
@@ -457,8 +464,20 @@ mod tests {
 
         policy.converge(subset, 0.9, 0.001);
 
-        for state in states.iter() {
-            println!("state id: {}, action: {}", state.borrow().get_id(), policy.get_optimal_action_for_state(&state.borrow()).get_description().unwrap_or(&"".to_string()));
-        }
+        states.chunks(max_cars+1).for_each(|chunk| {
+            println!(
+                "{}",
+                chunk
+                    .iter()
+                    // .map(|state| policy.get_optimal_action_for_state(&state.borrow()).get_description().unwrap_or(&"".to_string()).clone())
+                    .map(|state| format!("{:.2}",state.borrow().get_value()))
+                    .collect::<Vec<String>>()
+                    .join("\t")
+            );
+        });
+
+        println!("");
+        println!("0 .. 20");
+        println!("l2");
     }
 }
