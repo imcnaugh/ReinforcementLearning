@@ -266,68 +266,6 @@ impl MutablePolicy {
             }
         }
     }
-
-    pub fn value_iteration(&mut self, states: &mut Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
-        let mut iteration = 0;
-        loop {
-            iteration += 1;
-            let mut delta: f32 = 0.0;
-            for mut state in states.iter_mut() {
-                if state.borrow().get_is_terminal() {
-                    continue;
-                }
-
-                let old_value = state.borrow().get_value();
-                let new_value = state.borrow().get_max_action_value(discount_rate);
-                state.borrow_mut().set_value(new_value);
-                delta = delta.max((old_value - new_value).abs());
-            }
-
-            if iteration % 100 == 0 {
-                println!("Value Iteration iteration: {}, delta: {}, threshold: {}", iteration, delta, threshold);
-            }
-
-            if delta < threshold {
-                println!("Value Iteration converged after {} iterations", iteration);
-                break;
-            }
-        }
-        println!("finished estimating state value for policy");
-        println!("starting to update policy");
-
-        for state in states.iter() {
-            let mut max_value = f32::MIN;
-            let mut max_action_ids: Option<String> = None;
-
-            state.borrow().get_actions().iter().for_each(|a| {
-                let value = a.get_value(discount_rate);
-                if value > max_value {
-                    max_action_ids = Some(a.get_id().to_string());
-                    max_value = value;
-                }
-            });
-
-            let new_probs: Vec<(f32, String)> = self
-                .state_and_action_probabilities
-                .get(state.borrow().get_id())
-                .unwrap_or(&vec![(0.0, String::new())])
-                .iter()
-                .map(|(prob, a_id)| {
-                    if let Some(max_action_id) = &max_action_ids {
-                        return if max_action_id == a_id {
-                            (1_f32, a_id.to_string())
-                        } else {
-                            (0_f32, a_id.to_string())
-                        }
-                    } else {
-                        (0_f32, a_id.to_string())
-                    }
-                })
-                .collect();
-            self.state_and_action_probabilities
-                .insert(state.borrow().get_id().clone(), new_probs);
-        }
-    }
 }
 
 impl Policy for MutablePolicy {

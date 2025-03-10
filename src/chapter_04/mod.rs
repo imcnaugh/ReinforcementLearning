@@ -88,6 +88,37 @@ pub fn poisson_calc(rate_of_occurrence: i64, events_count: u64) -> f64 {
         / factorial as f64
 }
 
+pub fn value_iteration(states: &mut Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
+    let mut iteration = 0;
+    loop {
+        iteration += 1;
+        let mut delta: f32 = 0.0;
+        for mut state in states.iter_mut() {
+            if state.borrow().get_is_terminal() {
+                continue;
+            }
+
+            let old_value = state.borrow().get_value();
+            let mut new_value = f32::NEG_INFINITY;
+            state.borrow().get_actions().iter().for_each(|action| {
+                let action_value = action.get_value(discount_rate);
+                if new_value < action_value {
+                    new_value = action_value;
+                }
+            });
+
+            state.borrow_mut().set_value(new_value);
+            delta = delta.max((old_value - new_value).abs());
+        }
+
+        if delta < threshold {
+            println!("Value Iteration converged after {} iterations", iteration);
+            break;
+        }
+    }
+    println!("finished estimating state value for policy");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -503,9 +534,9 @@ mod tests {
 
         let mut policy = MutablePolicy::new(&states);
 
-        let mut subset = states[..].to_vec();
+        let subset = states[..].to_vec();
 
-        policy.value_iteration(&mut subset, 0.9, 0.001);
+        policy.policy_iteration(subset, 0.9, 0.001);
 
         states
             .chunks((max_cars + 1) as usize)
@@ -546,6 +577,7 @@ mod tests {
         let mut states = (lowest_bet..winning_amount).map(|i| {
             let mut new_state = State::new();
             new_state.set_id(format!("{}", i));
+            new_state.set_capital(i);
             Rc::new(RefCell::new(new_state))
         }).collect::<Vec<Rc<RefCell<State>>>>();
         let terminal_state = Rc::new(RefCell::new(State::new()));
@@ -556,22 +588,23 @@ mod tests {
 
         println!("Setting up actions");
         states.iter().enumerate().for_each(|(index, state)| {
-            let index = index + 1;
             if state.borrow().get_is_terminal() {
                 return;
             }
 
+            let capital = state.borrow().get_capital().unwrap().clone();
+
             let mut actions: Vec<Action> = vec![];
-            (lowest_bet..=index).for_each(|i| {
+            (losing_amount..=capital).for_each(|i| {
                 let mut bet_action = Action::new();
                 bet_action.set_description(format!("{}", i));
-                let total_after_win = index + i;
-                let total_after_loss = index - i;
+                let total_after_win = capital + i;
+                let total_after_loss = capital - i;
                 let win_reward = if total_after_win >= winning_amount { 1_f32 } else { 0_f32 };
                 let lose_reward = if total_after_loss <= losing_amount { 0_f32 } else { 0_f32 };
 
-                let winning_next_state = if total_after_win >= winning_amount { &terminal_state } else { &states[total_after_win] };
-                let losing_next_state = if total_after_loss <= losing_amount { &terminal_state } else { &states[total_after_loss] };
+                let winning_next_state = if total_after_win >= winning_amount { &terminal_state } else { &states[total_after_win as usize] };
+                let losing_next_state = if total_after_loss <= losing_amount { &terminal_state } else { &states[total_after_loss as usize] };
 
                 bet_action.add_possible_next_state(winning_odds, winning_next_state.clone(), win_reward);
                 bet_action.add_possible_next_state(losing_odds, losing_next_state.clone(), lose_reward);
@@ -584,31 +617,43 @@ mod tests {
         });
         println!("Actions setup complete");
 
+        states.iter().for_each(|state| {
+            println!("state capitol: {}, value: {}", state.borrow().get_capital().unwrap_or(0), state.borrow().get_value());
+        });
+
         println!("Setting up policy");
-        let mut policy = MutablePolicy::new(&states);
-        policy.value_iteration(&mut states, 1.0, 0.00001);
+        value_iteration(&mut states, 1.0, 0.00001);
         println!("Policy convergence complete");
+
+        states.iter().for_each(|state| {
+            println!("state capitol: {}, value: {}", state.borrow().get_capital().unwrap_or(0), state.borrow().get_value());
+        });
 
         println!("Graphing output");
         let mut optimal_bet_per_capital: Vec<(f32, f32)> = vec![];
-        states[..winning_amount].iter().enumerate().for_each(|(index, state)| {
-            if let Some(option) = policy.get_optimal_action_for_state(&state.borrow()) {
-                let action = option.get_description().unwrap_or(&"".to_string()).clone();
-                let best_bet_amount = action.parse::<i32>().unwrap_or(0) as f32;
-                let current_capital = index as f32 + 1.0;
-                optimal_bet_per_capital.push((current_capital, best_bet_amount));
-            }
+        states[..].iter().enumerate().for_each(|(index, state)| {
+            let action = state.borrow().get_max_action_description(1.0);
+            let best_bet_amount = action.parse::<i32>().unwrap_or(0) as f32;
+            let current_capital = index as f32 + 1.0;
+            optimal_bet_per_capital.push((current_capital, best_bet_amount));
         });
+        let state_0_values = states[8].borrow().get_debug_value_arr().iter().enumerate().map(|(i, v)| (i as f32, v.clone())).collect::<Vec<(f32, f32)>>();
 
         println!("printing graph");
-        let chart_data_s1 = ChartData::new("Best Bets".to_string(), optimal_bet_per_capital, BLUE.into());
+        let best_bet_at_capitol_data = ChartData::new("Best Bets".to_string(), optimal_bet_per_capital, BLUE.into());
+        let state_0_data = ChartData::new("State 0".to_string(), state_0_values, RED.into());
         let mut chart_builder = ChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from("output/chapter4/Gambler.png"))
             .set_x_label("Capital".to_string())
             .set_y_label("Final Policy".to_string())
             .set_title("Gamblers Problem Example 4.3".to_string());
-        chart_builder.add_data(chart_data_s1);
+        chart_builder.add_data(best_bet_at_capitol_data);
+        chart_builder.add_data(state_0_data);
         chart_builder.create_chart().unwrap();
+
+
+
+
     }
 }

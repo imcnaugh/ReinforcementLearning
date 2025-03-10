@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicUsize;
 #[derive(Debug)]
 pub struct State {
     id: String,
+    capital: Option<i32>,
     value: f32,
     actions: Vec<Action>,
     debug_value_arr: Vec<f32>,
@@ -21,6 +22,7 @@ impl State {
         State {
             id: next_state_id,
             value: 0.0,
+            capital: None,
             actions: Vec::new(),
             debug_value_arr: Vec::new(),
             is_terminal: false,
@@ -33,6 +35,14 @@ impl State {
 
     pub fn set_is_terminal(&mut self, is_terminal: bool) {
         self.is_terminal = is_terminal;
+    }
+
+    pub fn get_capital(&self) -> Option<i32> {
+        self.capital
+    }
+
+    pub fn set_capital(&mut self, capital: i32) {
+        self.capital = Some(capital);
     }
 
     pub fn get_is_terminal(&self) -> bool {
@@ -64,7 +74,26 @@ impl State {
         &self.id
     }
 
+    pub fn get_max_action_description(&self, discount_rate: f32) -> String {
+        if self.is_terminal {
+            return String::new();
+        }
+        let mut max_action_value = f32::MIN;
+        let mut max_action_description = String::new();
+        self.actions.iter().for_each(|action| {
+            let action_value = action.get_value(discount_rate);
+            if action_value > max_action_value {
+                max_action_value = action_value;
+                max_action_description = action.get_description().unwrap().to_string();
+            }
+        });
+        max_action_description
+    }
+
     pub fn get_max_action_value(&self, discount_rate: f32) -> f32 {
+        if self.is_terminal {
+            return 0_f32;
+        }
         let mut max_action_value = f32::MIN;
         self.actions.iter().for_each(|action| {
             let action_value = action.get_value(discount_rate);
