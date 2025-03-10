@@ -7,6 +7,7 @@ pub struct State {
     value: f32,
     actions: Vec<Action>,
     debug_value_arr: Vec<f32>,
+    is_terminal: bool,
 }
 
 static mut NEXT_STATE_ID: AtomicUsize = AtomicUsize::new(0);
@@ -22,7 +23,20 @@ impl State {
             value: 0.0,
             actions: Vec::new(),
             debug_value_arr: Vec::new(),
+            is_terminal: false,
         }
+    }
+
+    pub fn set_id(&mut self, id: String) {
+        self.id = id;
+    }
+
+    pub fn set_is_terminal(&mut self, is_terminal: bool) {
+        self.is_terminal = is_terminal;
+    }
+
+    pub fn get_is_terminal(&self) -> bool {
+        self.is_terminal
     }
 
     pub fn add_action(&mut self, action: Action) {
@@ -30,7 +44,11 @@ impl State {
     }
 
     pub fn get_value(&self) -> f32 {
-        self.value
+        if self.is_terminal {
+            0_f32
+        } else {
+            self.value
+        }
     }
 
     pub fn set_value(&mut self, value: f32) {
@@ -46,7 +64,7 @@ impl State {
         &self.id
     }
 
-    pub fn get_value_to_max_action_value(&self, discount_rate: f32) -> f32 {
+    pub fn get_max_action_value(&self, discount_rate: f32) -> f32 {
         let mut max_action_value = f32::MIN;
         self.actions.iter().for_each(|action| {
             let action_value = action.get_value(discount_rate);

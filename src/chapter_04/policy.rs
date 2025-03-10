@@ -145,7 +145,20 @@ impl MutablePolicy {
         }
     }
 
-    pub fn get_optimal_action_for_state<'a>(&self, state: &'a State) -> &'a Action {
+    pub fn get_optimal_action_id_for_state_id(&self, state_id: &str) -> Option<String> {
+        let mut max_odds = f32::MIN;
+        let mut ret_val:Option<String> = None;
+        self.state_and_action_probabilities.get(state_id).unwrap().iter().for_each(|(prob, a_id)| {
+            if *prob > max_odds {
+                max_odds = prob.clone();
+                ret_val = Some(a_id.to_string());
+            }
+        });
+
+        ret_val
+    }
+
+    pub fn get_optimal_action_for_state<'a>(&self, state: &'a State) -> Option<&'a Action> {
         let mut max_value = f32::MIN;
         let mut max_action_ids = String::new();
         state.get_actions().iter().for_each(|a| {
@@ -155,12 +168,10 @@ impl MutablePolicy {
                 max_value = value;
             }
         });
-        let action = state
+        state
             .get_actions()
             .iter()
             .find(|a| a.get_id() == max_action_ids)
-            .unwrap();
-        action
     }
 
     /// Updates the current policy until the optimal action is found for each state.
@@ -259,73 +270,62 @@ impl MutablePolicy {
     pub fn value_iteration(&mut self, states: &mut Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
         let mut iteration = 0;
         loop {
-            loop {
-                iteration += 1;
-                let mut delta: f32 = 0.0;
-                for mut state in states.iter_mut() {
-                    let old_value = state.borrow().get_value();
-                    let new_value = state.borrow().get_value_to_max_action_value(discount_rate);
-                    state.borrow_mut().set_value(new_value);
-                    delta = delta.max((old_value - new_value).abs());
+            iteration += 1;
+            let mut delta: f32 = 0.0;
+            for mut state in states.iter_mut() {
+                if state.borrow().get_is_terminal() {
+                    continue;
                 }
 
-                if delta < threshold {
-                    println!("Value Iteration converged after {} iterations", iteration);
-                    break;
-                }
-            }
-            println!("finished estimating state value for policy");
-            println!("starting to update policy");
-
-            let mut policy_stable = true;
-            for state in states.iter() {
-                let mut max_value = f32::MIN;
-                let mut max_action_ids = Vec::new();
-
-                state.borrow().get_actions().iter().for_each(|a| {
-                    let value = a.get_value(discount_rate);
-                    if value > max_value {
-                        max_action_ids = vec![a.get_id().to_string()];
-                        max_value = value;
-                    } else if value == max_value {
-                        max_action_ids.push(a.get_id().to_string());
-                    }
-                });
-
-                let expected_odds: f32 = 1.0_f32 / (max_action_ids.len() as f32);
-
-                let new_probs: Vec<(f32, String)> = self
-                    .state_and_action_probabilities
-                    .get(state.borrow().get_id())
-                    .unwrap()
-                    .iter()
-                    .map(|(prob, a_id)| {
-                        if max_action_ids.contains(&a_id) {
-                            if prob.clone() != expected_odds {
-                                policy_stable = false;
-                            }
-                            (expected_odds, a_id.to_string())
-                        } else {
-                            if prob.clone() != 0.0 {
-                                policy_stable = false;
-                            }
-                            (0.0_f32, a_id.to_string())
-                        }
-                    })
-                    .collect();
-
-                self.state_and_action_probabilities
-                    .insert(state.borrow().get_id().clone(), new_probs);
+                let old_value = state.borrow().get_value();
+                let new_value = state.borrow().get_max_action_value(discount_rate);
+                state.borrow_mut().set_value(new_value);
+                delta = delta.max((old_value - new_value).abs());
             }
 
-            println!(
-                "finished updating policy, policy is stable: {}",
-                policy_stable
-            );
+            if iteration % 100 == 0 {
+                println!("Value Iteration iteration: {}, delta: {}, threshold: {}", iteration, delta, threshold);
+            }
 
-            if policy_stable {
+            if delta < threshold {
+                println!("Value Iteration converged after {} iterations", iteration);
                 break;
             }
+        }
+        println!("finished estimating state value for policy");
+        println!("starting to update policy");
+
+        for state in states.iter() {
+            let mut max_value = f32::MIN;
+            let mut max_action_ids: Option<String> = None;
+
+            state.borrow().get_actions().iter().for_each(|a| {
+                let value = a.get_value(discount_rate);
+                if value > max_value {
+                    max_action_ids = Some(a.get_id().to_string());
+                    max_value = value;
+                }
+            });
+
+            let new_probs: Vec<(f32, String)> = self
+                .state_and_action_probabilities
+                .get(state.borrow().get_id())
+                .unwrap_or(&vec![(0.0, String::new())])
+                .iter()
+                .map(|(prob, a_id)| {
+                    if let Some(max_action_id) = &max_action_ids {
+                        return if max_action_id == a_id {
+                            (1_f32, a_id.to_string())
+                        } else {
+                            (0_f32, a_id.to_string())
+                        }
+                    } else {
+                        (0_f32, a_id.to_string())
+                    }
+                })
+                .collect();
+            self.state_and_action_probabilities
+                .insert(state.borrow().get_id().clone(), new_probs);
         }
     }
 }
@@ -343,14 +343,13 @@ impl Policy for MutablePolicy {
             .get_actions()
             .iter()
             .map(|a| {
-                // TODO refactor, this is gross but it should work
                 let prob = self
                     .state_and_action_probabilities
                     .get(state.get_id())
                     .unwrap()
                     .iter()
                     .find(|(_, id)| id == a.get_id())
-                    .unwrap()
+                    .unwrap_or(&(0.0, "".to_string()))
                     .0;
                 (prob, a)
             })

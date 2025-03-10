@@ -96,6 +96,7 @@ mod tests {
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
     use std::collections::HashMap;
+    use std::os::macos::raw::stat;
     use std::path::PathBuf;
     use std::sync::atomic::AtomicUsize;
 
@@ -399,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_car_rental_example_4_2() {
-        let max_cars: i32 = 20;
+        let max_cars: i32 = 10;
         let max_cars_moved_per_night: usize = 5;
 
         let state_count = (max_cars + 1) * (max_cars + 1);
@@ -518,7 +519,7 @@ mod tests {
                     chunk
                         .iter()
                         .map(|state| policy
-                            .get_optimal_action_for_state(&state.borrow())
+                            .get_optimal_action_for_state(&state.borrow()).unwrap()
                             .get_description()
                             .unwrap_or(&"".to_string())
                             .clone())
@@ -531,5 +532,83 @@ mod tests {
         println!();
         println!("0 .. 20");
         println!("l2");
+    }
+
+    #[test]
+    fn test_gamblers_problem_example_4_3() {
+        let winning_odds = 0.4;
+        let winning_amount = 100;
+        let losing_amount = 0;
+        let lowest_bet = losing_amount + 1;
+        let losing_odds = 1_f32 - winning_odds;
+
+        println!("Setting up states");
+        let mut states = (lowest_bet..winning_amount).map(|i| {
+            let mut new_state = State::new();
+            new_state.set_id(format!("{}", i));
+            Rc::new(RefCell::new(new_state))
+        }).collect::<Vec<Rc<RefCell<State>>>>();
+        let terminal_state = Rc::new(RefCell::new(State::new()));
+        terminal_state.borrow_mut().set_id("Terminal State".to_string());
+        terminal_state.borrow_mut().set_is_terminal(true);
+        states.push(terminal_state.clone());
+        println!("States setup complete");
+
+        println!("Setting up actions");
+        states.iter().enumerate().for_each(|(index, state)| {
+            let index = index + 1;
+            if state.borrow().get_is_terminal() {
+                return;
+            }
+
+            let mut actions: Vec<Action> = vec![];
+            (lowest_bet..=index).for_each(|i| {
+                let mut bet_action = Action::new();
+                bet_action.set_description(format!("{}", i));
+                let total_after_win = index + i;
+                let total_after_loss = index - i;
+                let win_reward = if total_after_win >= winning_amount { 1_f32 } else { 0_f32 };
+                let lose_reward = if total_after_loss <= losing_amount { 0_f32 } else { 0_f32 };
+
+                let winning_next_state = if total_after_win >= winning_amount { &terminal_state } else { &states[total_after_win] };
+                let losing_next_state = if total_after_loss <= losing_amount { &terminal_state } else { &states[total_after_loss] };
+
+                bet_action.add_possible_next_state(winning_odds, winning_next_state.clone(), win_reward);
+                bet_action.add_possible_next_state(losing_odds, losing_next_state.clone(), lose_reward);
+                actions.push(bet_action);
+            });
+
+            actions.into_iter().for_each(move |a| {
+                state.borrow_mut().add_action(a);
+            });
+        });
+        println!("Actions setup complete");
+
+        println!("Setting up policy");
+        let mut policy = MutablePolicy::new(&states);
+        policy.value_iteration(&mut states, 1.0, 0.00001);
+        println!("Policy convergence complete");
+
+        println!("Graphing output");
+        let mut optimal_bet_per_capital: Vec<(f32, f32)> = vec![];
+        states[..winning_amount].iter().enumerate().for_each(|(index, state)| {
+            if let Some(option) = policy.get_optimal_action_for_state(&state.borrow()) {
+                let action = option.get_description().unwrap_or(&"".to_string()).clone();
+                let best_bet_amount = action.parse::<i32>().unwrap_or(0) as f32;
+                let current_capital = index as f32 + 1.0;
+                optimal_bet_per_capital.push((current_capital, best_bet_amount));
+            }
+        });
+
+        println!("printing graph");
+        let chart_data_s1 = ChartData::new("Best Bets".to_string(), optimal_bet_per_capital, BLUE.into());
+        let mut chart_builder = ChartBuilder::new();
+        chart_builder
+            .set_path(PathBuf::from("output/chapter4/Gambler.png"))
+            .set_x_label("Capital".to_string())
+            .set_y_label("Final Policy".to_string())
+            .set_title("Gamblers Problem Example 4.3".to_string());
+        chart_builder.add_data(chart_data_s1);
+        chart_builder.create_chart().unwrap();
     }
 }
