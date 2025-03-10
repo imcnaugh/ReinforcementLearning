@@ -28,11 +28,11 @@ mod tests {
     /// where the "real way" to compute discounted rewards with more efficient
     /// techniques is explained.
     fn discount_reward_dynamic_programming(rewards: &Vec<f32>, discount_rate: f32) -> f32 {
-        let g = 0f32;
+        let mut g = 0f32;
         let mut returns = vec![];
 
         for r in rewards.iter().rev() {
-            let g = r + discount_rate * g;
+            g = r + discount_rate * g;
             returns.push(g);
         }
 

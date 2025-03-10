@@ -46,6 +46,17 @@ impl State {
         &self.id
     }
 
+    pub fn get_value_to_max_action_value(&self, discount_rate: f32) -> f32 {
+        let mut max_action_value = f32::MIN;
+        self.actions.iter().for_each(|action| {
+            let action_value = action.get_value(discount_rate);
+            if action_value > max_action_value {
+                max_action_value = action_value;
+            }
+        });
+        max_action_value
+    }
+
     pub fn get_debug_value_arr(&self) -> &Vec<f32> {
         &self.debug_value_arr
     }

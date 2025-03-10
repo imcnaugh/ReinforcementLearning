@@ -16,7 +16,14 @@ pub trait Policy {
 static mut NEXT_POLICY_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl dyn Policy + '_ {
-    pub fn get_value_of_state(&self, state: &State, discount_rate: f32) -> f32 {
+
+    /// # Policy Evaluation (Prediction)
+    ///
+    /// It takes a state and a policy and returns the value of the state under that policy.
+    ///
+    /// It does this by taking the value of each action available in the state, multiplying that by
+    /// the odds of taking that action under the policy, and summing the results.
+    pub fn calc_state_value(&self, state: &State, discount_rate: f32) -> f32 {
         self.get_probabilities_for_each_action_of_state(state)
             .iter()
             .map(|(prob, action)| prob * action.get_value(discount_rate))
@@ -156,7 +163,14 @@ impl MutablePolicy {
         action
     }
 
-    pub fn converge(
+    /// Updates the current policy until the optimal action is found for each state.
+    ///
+    /// This will calc the value of each state, then for each state, it will identify the action
+    /// with the highest value, and will modify the policy to be greedy for that action.
+    ///
+    /// Loop this over this logic until no changes are made will ensure that the optimal policy
+    /// for each state has been identified.
+    pub fn policy_iteration(
         &mut self,
         mut states: Vec<Rc<RefCell<State>>>,
         discount_rate: f32,
@@ -176,7 +190,7 @@ impl MutablePolicy {
                 for mut state in states.iter_mut() {
                     let v_old = state.borrow().get_value(); // Save the old value for delta computation
                     let new_value: f32 =
-                        <dyn Policy>::get_value_of_state(self, &state.borrow(), discount_rate);
+                        <dyn Policy>::calc_state_value(self, &state.borrow(), discount_rate);
 
                     // Update the state's value and calculate the maximum change (delta)
                     state.borrow_mut().set_value(new_value);
@@ -184,6 +198,79 @@ impl MutablePolicy {
                 }
 
                 if delta < threshold {
+                    break;
+                }
+            }
+            println!("finished estimating state value for policy");
+            println!("starting to update policy");
+
+            let mut policy_stable = true;
+            for state in states.iter() {
+                let mut max_value = f32::MIN;
+                let mut max_action_ids = Vec::new();
+
+                state.borrow().get_actions().iter().for_each(|a| {
+                    let value = a.get_value(discount_rate);
+                    if value > max_value {
+                        max_action_ids = vec![a.get_id().to_string()];
+                        max_value = value;
+                    } else if value == max_value {
+                        max_action_ids.push(a.get_id().to_string());
+                    }
+                });
+
+                let expected_odds: f32 = 1.0_f32 / (max_action_ids.len() as f32);
+
+                let new_probs: Vec<(f32, String)> = self
+                    .state_and_action_probabilities
+                    .get(state.borrow().get_id())
+                    .unwrap()
+                    .iter()
+                    .map(|(prob, a_id)| {
+                        if max_action_ids.contains(&a_id) {
+                            if prob.clone() != expected_odds {
+                                policy_stable = false;
+                            }
+                            (expected_odds, a_id.to_string())
+                        } else {
+                            if prob.clone() != 0.0 {
+                                policy_stable = false;
+                            }
+                            (0.0_f32, a_id.to_string())
+                        }
+                    })
+                    .collect();
+
+                self.state_and_action_probabilities
+                    .insert(state.borrow().get_id().clone(), new_probs);
+            }
+
+            println!(
+                "finished updating policy, policy is stable: {}",
+                policy_stable
+            );
+
+            if policy_stable {
+                break;
+            }
+        }
+    }
+
+    pub fn value_iteration(&mut self, states: &mut Vec<Rc<RefCell<State>>>, discount_rate: f32, threshold: f32) {
+        let mut iteration = 0;
+        loop {
+            loop {
+                iteration += 1;
+                let mut delta: f32 = 0.0;
+                for mut state in states.iter_mut() {
+                    let old_value = state.borrow().get_value();
+                    let new_value = state.borrow().get_value_to_max_action_value(discount_rate);
+                    state.borrow_mut().set_value(new_value);
+                    delta = delta.max((old_value - new_value).abs());
+                }
+
+                if delta < threshold {
+                    println!("Value Iteration converged after {} iterations", iteration);
                     break;
                 }
             }

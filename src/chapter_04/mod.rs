@@ -10,6 +10,35 @@ use std::f64::consts::E;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
+/// # Iterative Policy Evaluation
+///
+/// Given a set of states with actions that connect each other, This function iterates over the
+/// states until all states value converges. Since a states value is calculated by multiplying the
+/// next states value by the odds of that next state being chosen, and since all states are given
+/// an arbitrary starting value. we need to loop over each state calculating out its value until
+/// it starts to converge.
+///
+/// ## E.G.
+///
+/// if we have 3 states,
+///  - A, has a single action that leads to state B 100% of the time with no reward
+///  - B, has a single action that leads to state C 100% of the time with a reward of 10
+///  - C, a terminal state
+///
+/// Let's assign an arbitrary value of 0 to all states. and a discount_rate of 1
+///
+/// In the first iteration, the new value of A will be calculated off the value of state B, with its
+/// initial value of 0 the calculation would be 0 + (0 * 1) (the reward of the action + the value of
+/// b times the odds of that state being selected).
+///
+/// Then state B would be calculated, with its single action with a reward of 10 leading to state C
+/// the math looks like (10 + (0 * 1))  leaving the value of B as 10.
+///
+/// C is a terminal state, so it would not be updated.
+///
+/// On the second loop the value of A would be updated with the new value of B, so the math would
+/// look like (0 + (10 * 1)) again, the reward plus the value of the new state times the odds of it
+/// being chosen.
 fn iterative_policy_evaluation(
     policy: &dyn Policy,
     states: &mut Vec<Rc<RefCell<State>>>,
@@ -28,7 +57,7 @@ fn iterative_policy_evaluation(
         // Iterate through each state and update its value
         for mut state in states.iter_mut() {
             let v_old = state.borrow().get_value(); // Save the old value for delta computation
-            let new_value: f32 = policy.get_value_of_state(&state.borrow(), discount_rate);
+            let new_value: f32 = policy.calc_state_value(&state.borrow(), discount_rate);
 
             // Update the state's value and calculate the maximum change (delta)
             state.borrow_mut().set_value(new_value);
@@ -322,7 +351,7 @@ mod tests {
             )
         }
 
-        simple_policy.converge(subset, 1.0, 0.00001);
+        simple_policy.policy_iteration(subset, 1.0, 0.00001);
 
         for state in states.iter() {
             println!(
@@ -473,9 +502,9 @@ mod tests {
 
         let mut policy = MutablePolicy::new(&states);
 
-        let subset = states[..].to_vec();
+        let mut subset = states[..].to_vec();
 
-        policy.converge(subset, 0.9, 0.001);
+        policy.value_iteration(&mut subset, 0.9, 0.001);
 
         states
             .chunks((max_cars + 1) as usize)
