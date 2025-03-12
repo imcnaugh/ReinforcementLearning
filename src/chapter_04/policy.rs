@@ -16,7 +16,6 @@ pub trait Policy {
 static mut NEXT_POLICY_ID: AtomicUsize = AtomicUsize::new(0);
 
 impl dyn Policy + '_ {
-
     /// # Policy Evaluation (Prediction)
     ///
     /// It takes a state and a policy and returns the value of the state under that policy.
@@ -147,13 +146,17 @@ impl MutablePolicy {
 
     pub fn get_optimal_action_id_for_state_id(&self, state_id: &str) -> Option<String> {
         let mut max_odds = f32::MIN;
-        let mut ret_val:Option<String> = None;
-        self.state_and_action_probabilities.get(state_id).unwrap().iter().for_each(|(prob, a_id)| {
-            if *prob > max_odds {
-                max_odds = prob.clone();
-                ret_val = Some(a_id.to_string());
-            }
-        });
+        let mut ret_val: Option<String> = None;
+        self.state_and_action_probabilities
+            .get(state_id)
+            .unwrap()
+            .iter()
+            .for_each(|(prob, a_id)| {
+                if *prob > max_odds {
+                    max_odds = prob.clone();
+                    ret_val = Some(a_id.to_string());
+                }
+            });
 
         ret_val
     }
