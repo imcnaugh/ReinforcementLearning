@@ -86,22 +86,22 @@ impl LineChartBuilder {
 
     pub fn create_chart(self) -> Result<(), Box<dyn Error>> {
         let size = self.png_size.unwrap_or((1200, 900));
-        let path = &get_output_path(self.output_path)?;
+        let path = &Self::get_output_path(self.output_path)?;
         let root = BitMapBackend::new(path, size).into_drawing_area();
 
         root.fill(&WHITE)?;
 
-        let mut builder = plotters::prelude::ChartBuilder::on(&root);
-        let mut builder = builder
+        let mut builder = ChartBuilder::on(&root);
+        let builder = builder
             .margin(5)
             .x_label_area_size(60)
             .y_label_area_size(60);
-        let mut builder = match self.title {
+        let builder = match self.title {
             None => builder,
             Some(title) => builder.caption(title, ("sans-serif", 60).into_font()),
         };
 
-        let (x_min, x_max, y_min, y_max) = get_graph_bounds(&self.data);
+        let (x_min, x_max, y_min, y_max) = &Self::get_graph_bounds(&self.data);
         let margin = self.graph_margin.unwrap_or(0.1);
         let x_dif = x_max - x_min;
         let y_dif = y_max - y_min;
@@ -167,41 +167,168 @@ impl LineChartBuilder {
 
         Ok(())
     }
+
+    fn get_output_path(output_path: Option<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
+        let output_path = output_path.unwrap_or_else(|| "chart.png".into());
+        if let Some(parent) = output_path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+        Ok(output_path)
+    }
+
+    fn get_graph_bounds(data_points: &Vec<LineChartData>) -> (f32, f32, f32, f32) {
+        data_points.iter().fold(
+            (
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+                f32::INFINITY,
+                f32::NEG_INFINITY,
+            ),
+            |(min_x, max_x, min_y, max_y), data| {
+                data.points.iter().fold(
+                    (min_x, max_x, min_y, max_y),
+                    |(cur_min_x, cur_max_x, cur_min_y, cur_max_y), &(x, y)| {
+                        (
+                            cur_min_x.min(x),
+                            cur_max_x.max(x),
+                            cur_min_y.min(y),
+                            cur_max_y.max(y),
+                        )
+                    },
+                )
+            },
+        )
+    }
 }
 
-fn get_output_path(output_path: Option<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
-    let output_path = output_path.unwrap_or_else(|| "chart.png".into());
-    if let Some(parent) = output_path.parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent)?;
+pub struct MultiLineChartData {
+    label: Option<String>,
+    points: Vec<f64>,
+}
+
+impl MultiLineChartData {
+    pub fn new(points: Vec<f64>) -> MultiLineChartData {
+        MultiLineChartData {
+            label: None,
+            points,
         }
     }
-    Ok(output_path)
+
+    pub fn set_label(&mut self, label: String) {
+        self.label = Some(label);
+    }
 }
 
-fn get_graph_bounds(data_points: &Vec<LineChartData>) -> (f32, f32, f32, f32) {
-    data_points.iter().fold(
-        (
-            f32::INFINITY,
-            f32::NEG_INFINITY,
-            f32::INFINITY,
-            f32::NEG_INFINITY,
-        ),
-        |(min_x, max_x, min_y, max_y), data| {
-            data.points.iter().fold(
-                (min_x, max_x, min_y, max_y),
-                |(cur_min_x, cur_max_x, cur_min_y, cur_max_y), &(x, y)| {
-                    (
-                        cur_min_x.min(x),
-                        cur_max_x.max(x),
-                        cur_min_y.min(y),
-                        cur_max_y.max(y),
-                    )
-                },
-            )
-        },
-    )
+pub struct MultiLineChartBuilder {
+    title: Option<String>,
+    output_path: Option<PathBuf>,
+    png_size: Option<(u32, u32)>,
+    data: Vec<MultiLineChartData>,
 }
+
+impl MultiLineChartBuilder {
+    pub fn new() -> MultiLineChartBuilder {
+        MultiLineChartBuilder {
+            title: None,
+            output_path: None,
+            png_size: None,
+            data: vec![],
+        }
+    }
+
+    pub fn set_path(&mut self, path: PathBuf) -> &mut MultiLineChartBuilder {
+        self.output_path = Some(path);
+        self
+    }
+
+    pub fn set_title(&mut self, title: String) -> &mut MultiLineChartBuilder {
+        self.title = Some(title);
+        self
+    }
+
+    pub fn set_size(&mut self, width: u32, height: u32) -> &mut MultiLineChartBuilder {
+        self.png_size = Some((width, height));
+        self
+    }
+
+    pub fn add_data(&mut self, plot: MultiLineChartData) -> &mut MultiLineChartBuilder {
+        self.data.push(plot);
+        self
+    }
+
+    pub fn create_chart(self) -> Result<(), Box<dyn Error>> {
+        let path = &Self::get_output_path(self.output_path).unwrap();
+        let size = self.png_size.unwrap_or((1200, 900));
+        let area = SVGBackend::new(path, size).into_drawing_area();
+
+        area.fill(&WHITE).unwrap();
+
+
+        let max_width = self.data.iter().map(|d| d.points.len()).max().unwrap() - 1;
+
+        let max_element = self
+            .data
+            .iter()
+            .flat_map(|d| d.points.iter())
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
+
+        let max_depth = self.data.len() - 1;
+        
+        let x_axis = (0.0..max_width as f64).step(1.0);
+        let y_axis = (0.0..max_element).step(1.0);
+        let z_axis = (max_depth as f64..0.0).step(-1.0);
+
+        let mut chart = ChartBuilder::on(&area)
+            .caption("3D Plot Test", ("sans", 20))
+            .build_cartesian_3d(x_axis.clone(), y_axis.clone(), z_axis.clone()).unwrap();
+
+        chart.with_projection(|mut pb| {
+            pb.yaw = 0.5;
+            pb.scale = 0.9;
+            pb.into_matrix()
+        });
+
+        chart
+            .configure_axes()
+            .light_grid_style(BLACK.mix(0.15))
+            .max_light_lines(3)
+            .draw()
+            .unwrap();
+
+        let mut styles = vec![BLUE, RED, GREEN, BLACK].into_iter().cycle();
+
+        self.data.iter().enumerate().for_each(|(i, d)| {
+            let line_data: Vec<(f64, f64, f64)> = d.points.iter().enumerate().map(|(x, y)| (x as f64, y.clone(), i as f64)).collect();
+            let style = styles.next().unwrap();
+            chart
+                .draw_series(LineSeries::new(line_data, style.clone()))
+                .unwrap()
+                .label(d.label.clone().unwrap_or_else(|| i.to_string()))
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], ShapeStyle::from(style.clone()).stroke_width(2)));
+        });
+
+        chart.configure_series_labels().border_style(BLACK).draw().unwrap();
+
+        // To avoid the IO failure being ignored silently, we manually call the present function
+        area.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
+
+        Ok(())
+    }
+
+    fn get_output_path(output_path: Option<PathBuf>) -> Result<PathBuf, Box<dyn Error>> {
+        let output_path = output_path.unwrap_or_else(|| "multiLineChart.png".into());
+        if let Some(parent) = output_path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+        Ok(output_path)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -235,6 +362,20 @@ mod tests {
             // .set_size(1200, 900)
             .add_data(data_2)
             .add_data(data_3);
-        builder.create_chart();
+        builder.create_chart().expect("TODO: panic message");
+    }
+
+    #[test]
+    fn plot_3d_graph_test() {
+
+        let data = vec![1_f64, 1.2, 1.5, 1.2];
+        let data_2 = data.clone().iter().map(|x| x + 0.3).collect();
+
+        let d_1 = MultiLineChartData::new(data);
+        let d_2 = MultiLineChartData::new(data_2);
+
+        let mut builder = MultiLineChartBuilder::new();
+        builder.set_path(PathBuf::from("output/multiLineChart.png")).add_data(d_1).add_data(d_2);
+        builder.create_chart().expect("TODO: panic message");
     }
 }
