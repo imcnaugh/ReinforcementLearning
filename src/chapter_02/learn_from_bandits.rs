@@ -87,7 +87,7 @@ fn get_exploit_action_id(estimated_action_values: &Vec<f32>) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::service::{ChartBuilder, ChartData};
+    use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, BLACK, BLUE, GREEN};
     use std::path::PathBuf;
     use std::time::Instant;
@@ -100,15 +100,15 @@ mod tests {
     fn test_learn() {
         let bandit = setup_bandit();
         let a_return = learn(&bandit, 0.1, 1000);
-        let a = ChartData::new("e = 0.1".to_string(), a_return, ShapeStyle::from(&BLUE));
+        let a = LineChartData::new("e = 0.1".to_string(), a_return, ShapeStyle::from(&BLUE));
 
         let b_return = learn(&bandit, 0.01, 1000);
-        let b = ChartData::new("e = 0.01".to_string(), b_return, ShapeStyle::from(&GREEN));
+        let b = LineChartData::new("e = 0.01".to_string(), b_return, ShapeStyle::from(&GREEN));
 
         let c_return = learn(&bandit, 0.0, 1000);
-        let c = ChartData::new("e = 0".to_string(), c_return, ShapeStyle::from(&BLACK));
+        let c = LineChartData::new("e = 0".to_string(), c_return, ShapeStyle::from(&BLACK));
 
-        let mut builder = ChartBuilder::new();
+        let mut builder = LineChartBuilder::new();
         builder
             .add_data(a)
             .add_data(b)

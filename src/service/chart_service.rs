@@ -2,22 +2,22 @@ use plotters::prelude::*;
 use std::error::Error;
 use std::path::PathBuf;
 
-pub struct ChartData {
+pub struct LineChartData {
     label: Option<String>,
     points: Vec<(f32, f32)>,
     style: Option<ShapeStyle>,
 }
 
-impl ChartData {
-    pub fn new(label: String, points: Vec<(f32, f32)>, style: ShapeStyle) -> ChartData {
-        ChartData {
+impl LineChartData {
+    pub fn new(label: String, points: Vec<(f32, f32)>, style: ShapeStyle) -> LineChartData {
+        LineChartData {
             label: Some(label),
             points,
             style: Some(style),
         }
     }
 
-    pub fn just_plot_it(points: Vec<(f32, f32)>) -> ChartData {
+    pub fn just_plot_it(points: Vec<(f32, f32)>) -> LineChartData {
         Self {
             label: None,
             points,
@@ -26,19 +26,19 @@ impl ChartData {
     }
 }
 
-pub struct ChartBuilder {
+pub struct LineChartBuilder {
     title: Option<String>,
     x_label: Option<String>,
     y_label: Option<String>,
     output_path: Option<PathBuf>,
     png_size: Option<(u32, u32)>,
-    data: Vec<ChartData>,
+    data: Vec<LineChartData>,
     graph_margin: Option<f32>,
 }
 
-impl ChartBuilder {
-    pub fn new() -> ChartBuilder {
-        ChartBuilder {
+impl LineChartBuilder {
+    pub fn new() -> LineChartBuilder {
+        LineChartBuilder {
             title: None,
             x_label: None,
             y_label: None,
@@ -49,37 +49,37 @@ impl ChartBuilder {
         }
     }
 
-    pub fn set_path(&mut self, path: PathBuf) -> &mut ChartBuilder {
+    pub fn set_path(&mut self, path: PathBuf) -> &mut LineChartBuilder {
         self.output_path = Some(path);
         self
     }
 
-    pub fn set_title(&mut self, title: String) -> &mut ChartBuilder {
+    pub fn set_title(&mut self, title: String) -> &mut LineChartBuilder {
         self.title = Some(title);
         self
     }
 
-    pub fn set_x_label(&mut self, label: String) -> &mut ChartBuilder {
+    pub fn set_x_label(&mut self, label: String) -> &mut LineChartBuilder {
         self.x_label = Some(label);
         self
     }
 
-    pub fn set_y_label(&mut self, label: String) -> &mut ChartBuilder {
+    pub fn set_y_label(&mut self, label: String) -> &mut LineChartBuilder {
         self.y_label = Some(label);
         self
     }
 
-    pub fn set_size(&mut self, width: u32, height: u32) -> &mut ChartBuilder {
+    pub fn set_size(&mut self, width: u32, height: u32) -> &mut LineChartBuilder {
         self.png_size = Some((width, height));
         self
     }
 
-    pub fn add_data(&mut self, plot: ChartData) -> &mut ChartBuilder {
+    pub fn add_data(&mut self, plot: LineChartData) -> &mut LineChartBuilder {
         self.data.push(plot);
         self
     }
 
-    pub fn add_graph_margin(&mut self, margin: f32) -> &mut ChartBuilder {
+    pub fn add_graph_margin(&mut self, margin: f32) -> &mut LineChartBuilder {
         self.graph_margin = Some(margin);
         self
     }
@@ -179,7 +179,7 @@ fn get_output_path(output_path: Option<PathBuf>) -> Result<PathBuf, Box<dyn Erro
     Ok(output_path)
 }
 
-fn get_graph_bounds(data_points: &Vec<ChartData>) -> (f32, f32, f32, f32) {
+fn get_graph_bounds(data_points: &Vec<LineChartData>) -> (f32, f32, f32, f32) {
     data_points.iter().fold(
         (
             f32::INFINITY,
@@ -219,13 +219,13 @@ mod tests {
         //     points,
         //     ShapeStyle::from(&GREEN)
         // );
-        let data = ChartData::just_plot_it(points);
+        let data = LineChartData::just_plot_it(points);
 
-        let data_2 = ChartData::new(String::from("Data 2"), points_2, ShapeStyle::from(&BLACK));
+        let data_2 = LineChartData::new(String::from("Data 2"), points_2, ShapeStyle::from(&BLACK));
 
-        let data_3 = ChartData::just_plot_it(points_3);
+        let data_3 = LineChartData::just_plot_it(points_3);
 
-        let mut builder = ChartBuilder::new();
+        let mut builder = LineChartBuilder::new();
         builder
             .set_path(PathBuf::from("output/my_chart.png"))
             .add_data(data)

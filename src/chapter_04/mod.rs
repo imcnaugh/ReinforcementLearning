@@ -123,7 +123,7 @@ pub fn value_iteration(states: &mut Vec<Rc<RefCell<State>>>, discount_rate: f32,
 mod tests {
     use super::*;
     use crate::chapter_04::policy::{GreedyPolicy, MutablePolicy, Policy, RandomPolicy};
-    use crate::service::{ChartBuilder, ChartData};
+    use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
     use std::collections::HashMap;
@@ -181,7 +181,7 @@ mod tests {
             .into_iter()
             .cycle();
 
-        let mut chart_builder = ChartBuilder::new();
+        let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from("output/chapter4/iterativeConversion.png"))
             .set_x_label("Iterations".to_string())
@@ -198,7 +198,7 @@ mod tests {
                 .map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) })
                 .collect::<Vec<(f32, f32)>>();
             let next_id = next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let data = ChartData::new(format!("State {}", next_id), points, styles.next().unwrap());
+            let data = LineChartData::new(format!("State {}", next_id), points, styles.next().unwrap());
             chart_builder.add_data(data);
         }
 
@@ -287,8 +287,8 @@ mod tests {
             .enumerate()
             .map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) })
             .collect::<Vec<(f32, f32)>>();
-        let chart_data_s1 = ChartData::new("State 1".to_string(), state_1_values, BLUE.into());
-        let mut chart_builder = ChartBuilder::new();
+        let chart_data_s1 = LineChartData::new("State 1".to_string(), state_1_values, BLUE.into());
+        let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from("output/chapter4/gridWorld.png"))
             .set_x_label("Iterations".to_string())
@@ -683,13 +683,13 @@ mod tests {
             .collect::<Vec<(f32, f32)>>();
 
         println!("printing graph");
-        let best_bet_at_capitol_data = ChartData::new(
+        let best_bet_at_capitol_data = LineChartData::new(
             "Best Bets".to_string(),
             optimal_bet_per_capital,
             BLUE.into(),
         );
-        let state_0_data = ChartData::new("State 0".to_string(), state_0_values, RED.into());
-        let mut chart_builder = ChartBuilder::new();
+        let state_0_data = LineChartData::new("State 0".to_string(), state_0_values, RED.into());
+        let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from("output/chapter4/Gambler.png"))
             .set_x_label("Capital".to_string())
