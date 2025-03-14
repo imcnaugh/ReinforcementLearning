@@ -278,7 +278,8 @@ impl MultiLineChartBuilder {
         let max_depth = self.data.len() - 1;
         
         let x_axis = (0.0..max_width as f64).step(1.0);
-        let y_axis = (0.0..max_element).step(1.0);
+        // let y_axis = (0.0..max_element).step(1.0);
+        let y_axis = (-1.0..1.0).step(0.1);
         let z_axis = (max_depth as f64..0.0).step(-1.0);
 
         let mut chart = ChartBuilder::on(&area)

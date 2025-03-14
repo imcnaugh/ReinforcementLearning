@@ -43,6 +43,12 @@ pub trait CardProvider {
 
 pub struct RandomCardProvider;
 
+impl RandomCardProvider {
+    pub fn new() -> Self {
+        RandomCardProvider
+    }
+}
+
 impl CardProvider for RandomCardProvider {
     fn get_random_card(&self) -> Result<Value, ()> {
         let values = [

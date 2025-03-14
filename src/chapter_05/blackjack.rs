@@ -19,6 +19,14 @@ impl<'a, P: CardProvider> State<'a, P> {
         }
     }
 
+    pub fn get_player_count(&self) -> u8 {
+        self.player_count
+    }
+
+    pub fn get_usable_ace(&self) -> bool {
+        self.usable_ace
+    }
+
     pub fn hit(&mut self) {
         let new_card = self.card_provider.get_random_card().unwrap();
         let new_player_count = self.player_count + new_card.get_value();
@@ -45,6 +53,30 @@ impl<'a, P: CardProvider> State<'a, P> {
             }
         }
     }
+
+    pub fn check_for_win(&self) -> f64 {
+        if self.player_count > 21 {
+            return -1.0;
+        }
+
+        let mut dealer_count = self.dealer_showing;
+        while dealer_count < 17 {
+            let new_card = self.card_provider.get_random_card().unwrap();
+            dealer_count = dealer_count + new_card.get_value();
+        }
+
+        if dealer_count > 21 {
+            return 1.0;
+        }
+
+        if dealer_count < self.player_count {
+            1.0
+        } else if dealer_count > self.player_count {
+            -1.0
+        } else {
+            0.0
+        }
+    }
 }
 
 impl<'a, P: CardProvider> Display for State<'a, P> {
@@ -56,6 +88,7 @@ impl<'a, P: CardProvider> Display for State<'a, P> {
 #[cfg(test)]
 mod tests {
     use crate::chapter_05::cards::Value;
+    use crate::chapter_05::cards::Value::{Eight, Five, Seven, Six};
     use super::*;
 
     struct MockCardProvider{
@@ -104,5 +137,18 @@ mod tests {
         assert_eq!(state.player_count, 16);
         assert_eq!(state.usable_ace, true);
         assert_eq!(state.dealer_showing, 0);
+    }
+
+    #[test]
+    fn test_dealer_will_not_hit_above_16() {
+        let mut mock_card_provider = MockCardProvider::new(Some(Seven));
+        let state = State::new(18, 10, false, &mock_card_provider);
+        let result = state.check_for_win();
+        assert_eq!(result, 1.0);
+
+        mock_card_provider.set_card_to_return(Some(Eight));
+        let state = State::new(18, 10, true, &mock_card_provider);
+        let result = state.check_for_win();
+        assert_eq!(result, 0.0);
     }
 }
