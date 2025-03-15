@@ -6,6 +6,7 @@ pub struct State<'a, P: CardProvider> {
     player_count: u8,
     dealer_showing: u8,
     usable_ace: bool,
+    previous_counts: Vec<u8>,
     card_provider: &'a P,
 }
 
@@ -15,6 +16,7 @@ impl<'a, P: CardProvider> State<'a, P> {
             player_count,
             dealer_showing,
             usable_ace,
+            previous_counts: vec![player_count],
             card_provider,
         }
     }
@@ -27,10 +29,19 @@ impl<'a, P: CardProvider> State<'a, P> {
         self.usable_ace
     }
 
+    pub fn get_dealer_showing(&self) -> u8 {
+        self.dealer_showing
+    }
+
+    pub fn get_previous_counts(&self) -> &Vec<u8> {
+        &self.previous_counts
+    }
+
     pub fn hit(&mut self) {
         let new_card = self.card_provider.get_random_card().unwrap();
         let new_player_count = self.player_count + new_card.get_value();
         self.player_count = new_player_count;
+        self.previous_counts.push(new_player_count);
         
         if new_player_count > 21 {
             if self.usable_ace {
@@ -76,6 +87,14 @@ impl<'a, P: CardProvider> State<'a, P> {
         } else {
             0.0
         }
+    }
+
+    pub fn id(&self) -> String {
+        format!("{}_{}_{}", self.player_count, self.dealer_showing, self.usable_ace)
+    }
+
+    pub fn print_previous_counts(&self) {
+        println!("{:?}", self.previous_counts);
     }
 }
 
