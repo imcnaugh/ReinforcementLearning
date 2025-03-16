@@ -39,28 +39,23 @@ impl<'a, P: CardProvider> State<'a, P> {
 
     pub fn hit(&mut self) {
         let new_card = self.card_provider.get_random_card().unwrap();
-        let new_player_count = self.player_count + new_card.get_value();
-        self.player_count = new_player_count;
-        
-        if new_player_count > 21 {
-            if self.usable_ace {
-                self.player_count = self.player_count - 10;
-                self.usable_ace = false;
-            } else {
-                match new_card {
-                    Ace => {
-                        self.player_count = self.player_count - 10;
-                        self.usable_ace = false;
-                    },
-                    _ => (),
-                }
-            }
-        } else {
-            match new_card {
-                Ace => {
+
+        if self.player_count + new_card.get_value() > 21 && self.usable_ace {
+            self.usable_ace = false;
+            self.player_count = self.player_count + new_card.get_value() - 10;
+        }
+
+        match new_card {
+            Ace => {
+                if self.player_count + new_card.get_value() > 21 {
+                    self.player_count = self.player_count + new_card.get_value() - 10;
+                } else {
+                    self.player_count = self.player_count + new_card.get_value();
                     self.usable_ace = true;
-                },
-                _ => (),
+                }
+            },
+            _ => {
+                self.player_count = self.player_count + new_card.get_value();
             }
         }
 
@@ -75,7 +70,18 @@ impl<'a, P: CardProvider> State<'a, P> {
         let mut dealer_count = self.dealer_showing;
         while dealer_count < 17 {
             let new_card = self.card_provider.get_random_card().unwrap();
-            dealer_count = dealer_count + new_card.get_value();
+            match new_card {
+                Ace => {
+                    if dealer_count + new_card.get_value() > 21 {
+                        dealer_count = dealer_count + new_card.get_value() - 10;
+                    } else {
+                        dealer_count = dealer_count + new_card.get_value();
+                    }
+                },
+                _ => {
+                    dealer_count = dealer_count + new_card.get_value();
+                }
+            }
         }
 
         if dealer_count > 21 {

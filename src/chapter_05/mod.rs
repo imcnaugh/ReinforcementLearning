@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 100000000;
+        let iteration_count = 1000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
         
@@ -116,50 +116,34 @@ mod tests {
                     _ => true,
                 };
 
-                let state_id = get_state_id(player_count, &starting_dealer_showing, usable_ace);
-                let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
-                let new_value = match values.get(&state_action_id) {
-                    Some((count, value)) => (*count + 1, crate::service::calc_average(*value, *count  + 1, g)),
-                    None => (1, g),
-                };
-                values.insert(state_action_id, new_value);
+                if *player_count <= 21 {
+                    let state_id = get_state_id(player_count, &starting_dealer_showing, usable_ace);
+                    let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
+                    let new_value = match values.get(&state_action_id) {
+                        Some((count, current_average)) => (*count + 1, crate::service::calc_average(*current_average, *count  + 1, g)),
+                        None => (1, g),
+                    };
+                    values.insert(state_action_id, new_value);
 
-                let hit_id = get_state_action_id(state_id.as_str(), true);
-                let stay_id = get_state_action_id(state_id.as_str(), false);
+                    let hit_id = get_state_action_id(state_id.as_str(), true);
+                    let stay_id = get_state_action_id(state_id.as_str(), false);
 
-                let hit_value = match values.get(&hit_id) {
-                    Some((count, value)) => *value,
-                    None => 0_f64,
-                };
-                let stay_value = match values.get(&stay_id) {
-                    Some((count, value)) => *value,
-                    None => 0_f64,
-                };
+                    let hit_value = match values.get(&hit_id) {
+                        Some((count, value)) => *value,
+                        None => 0_f64,
+                    };
+                    let stay_value = match values.get(&stay_id) {
+                        Some((count, value)) => *value,
+                        None => 0_f64,
+                    };
 
-                if hit_value > stay_value {
-                    policy.insert(state_id, true);
-                } else {
-                    policy.insert(state_id, false);
+                    if hit_value > stay_value {
+                        policy.insert(state_id, true);
+                    } else {
+                        policy.insert(state_id, false);
+                    }
                 }
             })
-        });
-
-        println!("no usable ace");
-        (12..=21).rev().for_each(|player_count| {
-            let mut str = format!("player sum: {} | ", player_count);
-            (2..=11).for_each(|dealer_showing| {
-                let state_id = get_state_id(&player_count, &dealer_showing, &false);
-                let policy_hit = match policy.get(state_id.as_str()) {
-                    Some(hit) => *hit,
-                    None => false,
-                };
-                let char = match policy_hit {
-                    true => 'H',
-                    false => 'S',
-                };
-                str.push_str(&format!("{} ",char));
-            });
-            println!("{}", str);
         });
 
         println!("usable ace");
@@ -179,8 +163,26 @@ mod tests {
             });
             println!("{}", str);
         });
+        println!("no usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &false);
+                let policy_hit = match policy.get(state_id.as_str()) {
+                    Some(hit) => *hit,
+                    None => false,
+                };
+                let char = match policy_hit {
+                    true => 'H',
+                    false => 'S',
+                };
+                str.push_str(&format!("{} ",char));
+            });
+            println!("{}", str);
+        });
 
-        println!("dealer showing:  2 3 4 5 6 7 8 9 10A")
+        println!("dealer showing:  2 3 4 5 6 7 8 9 10A");
+        println!("iterations: {}", iteration_count);
     }
 
     #[test]
