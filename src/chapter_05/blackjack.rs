@@ -45,6 +45,7 @@ impl<'a, P: CardProvider> State<'a, P> {
         if new_player_count > 21 {
             if self.usable_ace {
                 self.player_count = self.player_count - 10;
+                self.usable_ace = false;
             } else {
                 match new_card {
                     Ace => {

@@ -36,3 +36,19 @@ pub fn calc_average(
 ) -> f64 {
     current_average + (1.0 / total_count as f64) * (new_reward - current_average)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_calc_average() {
+        let numbers = vec![1.0, -1.0];
+        let o_n_average: f64 = numbers.iter().sum::<f64>() / numbers.len() as f64;
+
+        let o_1_average: f64 = numbers.iter().enumerate().fold(0.0, |acc, (i, next)| {
+            calc_average(acc, (i + 1) as i32, *next)
+        });
+        assert_eq!(o_1_average, o_n_average);
+    }
+}

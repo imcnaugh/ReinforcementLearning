@@ -66,10 +66,11 @@ mod tests {
     fn play_episode(policy: &HashMap<String, bool>, mut state: &mut State<RandomCardProvider>, is_starting_action_hit: bool) {
         if is_starting_action_hit {
             state.hit();
+
             let state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
             let is_policy_hit = match policy.get(state_id.as_str()) {
                 Some(hit) => *hit,
-                None => false,
+                None => true,
             };
             while state.get_player_count() < 21 && is_policy_hit {
                 state.hit();
@@ -118,7 +119,7 @@ mod tests {
                 let state_id = get_state_id(player_count, &starting_dealer_showing, usable_ace);
                 let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
                 let new_value = match values.get(&state_action_id) {
-                    Some((count, value)) => (*count + 1, crate::service::calc_average(*value, *count, g)),
+                    Some((count, value)) => (*count + 1, crate::service::calc_average(*value, *count  + 1, g)),
                     None => (1, g),
                 };
                 values.insert(state_action_id, new_value);
@@ -156,7 +157,7 @@ mod tests {
                     true => 'H',
                     false => 'S',
                 };
-                str.push_str(&format!("{}",char));
+                str.push_str(&format!("{} ",char));
             });
             println!("{}", str);
         });
@@ -174,12 +175,12 @@ mod tests {
                     true => 'H',
                     false => 'S',
                 };
-                str.push_str(&format!("{}",char));
+                str.push_str(&format!("{} ",char));
             });
             println!("{}", str);
         });
 
-        println!("dealer showing: 2 .. A")
+        println!("dealer showing:  2 3 4 5 6 7 8 9 10A")
     }
 
     #[test]
