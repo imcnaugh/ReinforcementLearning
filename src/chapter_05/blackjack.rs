@@ -6,7 +6,7 @@ pub struct State<'a, P: CardProvider> {
     player_count: u8,
     dealer_showing: u8,
     usable_ace: bool,
-    previous_counts: Vec<u8>,
+    previous_counts: Vec<(u8, bool)>,
     card_provider: &'a P,
 }
 
@@ -16,7 +16,7 @@ impl<'a, P: CardProvider> State<'a, P> {
             player_count,
             dealer_showing,
             usable_ace,
-            previous_counts: vec![player_count],
+            previous_counts: vec![(player_count, usable_ace)],
             card_provider,
         }
     }
@@ -33,7 +33,7 @@ impl<'a, P: CardProvider> State<'a, P> {
         self.dealer_showing
     }
 
-    pub fn get_previous_counts(&self) -> &Vec<u8> {
+    pub fn get_previous_counts(&self) -> &Vec<(u8, bool)> {
         &self.previous_counts
     }
 
@@ -41,7 +41,6 @@ impl<'a, P: CardProvider> State<'a, P> {
         let new_card = self.card_provider.get_random_card().unwrap();
         let new_player_count = self.player_count + new_card.get_value();
         self.player_count = new_player_count;
-        self.previous_counts.push(new_player_count);
         
         if new_player_count > 21 {
             if self.usable_ace {
@@ -63,6 +62,8 @@ impl<'a, P: CardProvider> State<'a, P> {
                 _ => (),
             }
         }
+
+        self.previous_counts.push((self.player_count, self.usable_ace));
     }
 
     pub fn check_for_win(&self) -> f64 {
@@ -89,10 +90,6 @@ impl<'a, P: CardProvider> State<'a, P> {
         }
     }
 
-    pub fn id(&self) -> String {
-        format!("{}_{}_{}", self.player_count, self.dealer_showing, self.usable_ace)
-    }
-
     pub fn print_previous_counts(&self) {
         println!("{:?}", self.previous_counts);
     }
@@ -107,7 +104,7 @@ impl<'a, P: CardProvider> Display for State<'a, P> {
 #[cfg(test)]
 mod tests {
     use crate::chapter_05::cards::Value;
-    use crate::chapter_05::cards::Value::{Eight, Five, Seven, Six};
+    use crate::chapter_05::cards::Value::{Eight, Five, King, Seven, Six};
     use super::*;
 
     struct MockCardProvider{
@@ -155,6 +152,15 @@ mod tests {
         state.hit();
         assert_eq!(state.player_count, 16);
         assert_eq!(state.usable_ace, true);
+        assert_eq!(state.dealer_showing, 0);
+
+
+        let mock_card_provider = MockCardProvider::new(Some(King));
+        let mut state = State::new(15, 0, false, &mock_card_provider);
+        state.hit();
+        state.hit();
+        assert_eq!(state.player_count, 35);
+        assert_eq!(state.usable_ace, false);
         assert_eq!(state.dealer_showing, 0);
     }
 

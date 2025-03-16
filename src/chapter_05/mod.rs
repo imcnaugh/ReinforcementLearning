@@ -59,10 +59,15 @@ mod tests {
         format!("{}_{}", state_id, action)
     }
 
+    pub fn get_state_id(player_count: &u8, dealer_showing: &u8, usable_ace: &bool) -> String {
+        format!("{}_{}_{}", player_count, dealer_showing, usable_ace)
+    }
+
     fn play_episode(policy: &HashMap<String, bool>, mut state: &mut State<RandomCardProvider>, is_starting_action_hit: bool) {
         if is_starting_action_hit {
             state.hit();
-            let is_policy_hit = match policy.get(&state.id()) {
+            let state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
+            let is_policy_hit = match policy.get(state_id.as_str()) {
                 Some(hit) => *hit,
                 None => false,
             };
@@ -74,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 5;
+        let iteration_count = 100000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
         
@@ -82,8 +87,8 @@ mod tests {
         let dealer_showing_range = 2_u8..=11;
         let player_usable_aces_range = vec![true, false];
 
-        let policy: HashMap<String, bool> = HashMap::new();
-        let values: HashMap<String, f64> = HashMap::new();
+        let mut policy: HashMap<String, bool> = HashMap::new();
+        let mut values: HashMap<String, (i32, f64)> = HashMap::new();
 
         (0..iteration_count).for_each(|_| {
             let starting_player_count = rand::rng().random_range(player_count_range.clone());
@@ -91,13 +96,97 @@ mod tests {
             let starting_player_usable_aces = rand::rng().random_bool(0.5);
 
             let mut state = State::new(starting_player_count, starting_dealer_showing, starting_player_usable_aces, &card_provider);
-            let starting_state_id = state.id().clone();
+            let starting_state_id = get_state_id(&starting_player_count, &starting_dealer_showing, &starting_player_usable_aces);
             let is_starting_action_hit = rand::rng().random_bool(0.5);
 
             play_episode(&policy, &mut state, is_starting_action_hit);
+            let reward = state.check_for_win();
 
             let mut g = 0.0;
 
+            state.get_previous_counts().iter().rev().enumerate().for_each(|(t, (player_count, usable_ace))| {
+                g = match t {
+                    0 => reward,
+                    _ => g * discount_rate + 0.0, // Add 0.0 as the reward for an action, but the only reward comes from the last action
+                };
+
+                let did_hit = match t {
+                    0 => false,
+                    _ => true,
+                };
+
+                let state_id = get_state_id(player_count, &starting_dealer_showing, usable_ace);
+                let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
+                let new_value = match values.get(&state_action_id) {
+                    Some((count, value)) => (*count + 1, crate::service::calc_average(*value, *count, g)),
+                    None => (1, g),
+                };
+                values.insert(state_action_id, new_value);
+
+                let hit_id = get_state_action_id(state_id.as_str(), true);
+                let stay_id = get_state_action_id(state_id.as_str(), false);
+
+                let hit_value = match values.get(&hit_id) {
+                    Some((count, value)) => *value,
+                    None => 0_f64,
+                };
+                let stay_value = match values.get(&stay_id) {
+                    Some((count, value)) => *value,
+                    None => 0_f64,
+                };
+
+                if hit_value > stay_value {
+                    policy.insert(state_id, true);
+                } else {
+                    policy.insert(state_id, false);
+                }
+            })
+        });
+
+        println!("no usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &false);
+                let policy_hit = match policy.get(state_id.as_str()) {
+                    Some(hit) => *hit,
+                    None => false,
+                };
+                let char = match policy_hit {
+                    true => 'H',
+                    false => 'S',
+                };
+                str.push_str(&format!("{}",char));
+            });
+            println!("{}", str);
+        });
+
+        println!("usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &true);
+                let policy_hit = match policy.get(state_id.as_str()) {
+                    Some(hit) => *hit,
+                    None => false,
+                };
+                let char = match policy_hit {
+                    true => 'H',
+                    false => 'S',
+                };
+                str.push_str(&format!("{}",char));
+            });
+            println!("{}", str);
+        });
+
+        println!("dealer showing: 2 .. A")
+    }
+
+    #[test]
+    fn rev_a_list() {
+        let mut list = vec![1, 2, 3, 4, 5];
+        list.iter().rev().enumerate().for_each(|(i, v)| {
+            println!("{}: {}", i, v);
         });
     }
 }
