@@ -1,5 +1,5 @@
-mod blackjack;
-mod cards;
+pub mod blackjack;
+pub mod cards;
 
 #[cfg(test)]
 mod tests {
@@ -70,7 +70,7 @@ mod tests {
             let state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
             let is_policy_hit = match policy.get(state_id.as_str()) {
                 Some(hit) => *hit,
-                None => true,
+                None => false,
             };
             while state.get_player_count() < 21 && is_policy_hit {
                 state.hit();
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 1000000;
+        let iteration_count = 10000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
         
@@ -108,7 +108,7 @@ mod tests {
             state.get_previous_counts().iter().rev().enumerate().for_each(|(t, (player_count, usable_ace))| {
                 g = match t {
                     0 => reward,
-                    _ => g * discount_rate + 0.0, // Add 0.0 as the reward for an action, but the only reward comes from the last action
+                    _ => g,
                 };
 
                 let did_hit = match t {
@@ -120,7 +120,7 @@ mod tests {
                     let state_id = get_state_id(player_count, &starting_dealer_showing, usable_ace);
                     let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
                     let new_value = match values.get(&state_action_id) {
-                        Some((count, current_average)) => (*count + 1, crate::service::calc_average(*current_average, *count  + 1, g)),
+                        Some((count, current_average)) => (count + 1, crate::service::calc_average(*current_average, count  + 1, g)),
                         None => (1, g),
                     };
                     values.insert(state_action_id, new_value);
@@ -129,11 +129,11 @@ mod tests {
                     let stay_id = get_state_action_id(state_id.as_str(), false);
 
                     let hit_value = match values.get(&hit_id) {
-                        Some((count, value)) => *value,
+                        Some((count, value)) => value.clone(),
                         None => 0_f64,
                     };
                     let stay_value = match values.get(&stay_id) {
-                        Some((count, value)) => *value,
+                        Some((count, value)) => value.clone(),
                         None => 0_f64,
                     };
 
@@ -169,7 +169,7 @@ mod tests {
             (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &false);
                 let policy_hit = match policy.get(state_id.as_str()) {
-                    Some(hit) => *hit,
+                    Some(hit) => hit.clone(),
                     None => false,
                 };
                 let char = match policy_hit {

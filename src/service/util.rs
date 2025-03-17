@@ -51,4 +51,10 @@ mod tests {
         });
         assert_eq!(o_1_average, o_n_average);
     }
+
+    #[test]
+    fn test_calc_average_2() {
+        let average = calc_average(1.0, 2, 2.0);
+        assert_eq!(average, 1.5);
+    }
 }

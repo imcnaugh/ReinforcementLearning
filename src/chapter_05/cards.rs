@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::prelude::IndexedRandom;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Value {
@@ -67,7 +67,8 @@ impl CardProvider for RandomCardProvider {
             Value::King,
         ];
 
-        let index = rand::rng().random_range(0..values.len());
-        Ok(values[index])
+        let mut rng = rand::rng();
+        let item = values.choose(&mut rng).unwrap().clone();
+        Ok(item)
     }
 }

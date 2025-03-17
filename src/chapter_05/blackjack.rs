@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use crate::chapter_05::cards::CardProvider;
+use crate::chapter_05::cards::{CardProvider, Value};
 use crate::chapter_05::cards::Value::Ace;
 
 pub struct State<'a, P: CardProvider> {
@@ -37,29 +37,20 @@ impl<'a, P: CardProvider> State<'a, P> {
         &self.previous_counts
     }
 
-    pub fn hit(&mut self) {
+    pub fn hit(&mut self) -> Value {
         let new_card = self.card_provider.get_random_card().unwrap();
-
-        if self.player_count + new_card.get_value() > 21 && self.usable_ace {
-            self.usable_ace = false;
-            self.player_count = self.player_count + new_card.get_value() - 10;
-        }
-
-        match new_card {
-            Ace => {
-                if self.player_count + new_card.get_value() > 21 {
-                    self.player_count = self.player_count + new_card.get_value() - 10;
-                } else {
-                    self.player_count = self.player_count + new_card.get_value();
-                    self.usable_ace = true;
-                }
-            },
-            _ => {
-                self.player_count = self.player_count + new_card.get_value();
-            }
+        self.player_count = self.player_count + new_card.get_value();
+        if self.player_count > 21 && self.usable_ace {
+            self.player_count = self.player_count - 10;
+            self.usable_ace = match new_card {
+                Ace => true,
+                _ => false,
+            };
         }
 
         self.previous_counts.push((self.player_count, self.usable_ace));
+
+        new_card
     }
 
     pub fn check_for_win(&self) -> f64 {
@@ -70,6 +61,7 @@ impl<'a, P: CardProvider> State<'a, P> {
         let mut dealer_count = self.dealer_showing;
         while dealer_count < 17 {
             let new_card = self.card_provider.get_random_card().unwrap();
+
             match new_card {
                 Ace => {
                     if dealer_count + new_card.get_value() > 21 {
@@ -82,6 +74,8 @@ impl<'a, P: CardProvider> State<'a, P> {
                     dealer_count = dealer_count + new_card.get_value();
                 }
             }
+
+            // println!("dealer was dealt: {:?} is showing: {}", new_card, dealer_count);
         }
 
         if dealer_count > 21 {
