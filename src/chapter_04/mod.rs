@@ -198,7 +198,8 @@ mod tests {
                 .map(|(i, v)| -> (f32, f32) { (i as f32, v.clone()) })
                 .collect::<Vec<(f32, f32)>>();
             let next_id = next_id.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            let data = LineChartData::new(format!("State {}", next_id), points, styles.next().unwrap());
+            let data =
+                LineChartData::new(format!("State {}", next_id), points, styles.next().unwrap());
             chart_builder.add_data(data);
         }
 

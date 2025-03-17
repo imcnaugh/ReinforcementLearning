@@ -1,6 +1,6 @@
-use ReinforcementLearning::chapter_05::blackjack::State;
-use ReinforcementLearning::chapter_05::cards::{CardProvider, RandomCardProvider, Value::{Ace}};
 use std::io::{self, Write};
+use ReinforcementLearning::chapter_05::blackjack::State;
+use ReinforcementLearning::chapter_05::cards::{CardProvider, RandomCardProvider, Value::Ace};
 
 fn main() {
     let card_provider = RandomCardProvider::new();
@@ -19,7 +19,12 @@ fn main() {
     let dealer_card = card_provider.get_random_card().unwrap();
     let value = cards.iter().fold(0, |acc, card| acc + card.get_value());
 
-    let mut state = State::new(value, dealer_card.get_value(), has_usable_ace, &card_provider);
+    let mut state = State::new(
+        value,
+        dealer_card.get_value(),
+        has_usable_ace,
+        &card_provider,
+    );
 
     loop {
         if state.get_player_count() > 21 {
@@ -43,7 +48,7 @@ fn main() {
                 let new_card = state.hit();
                 println!("player was dealt: {:?}", new_card);
                 cards.push(new_card);
-            },
+            }
             's' => break,
             _ => (),
         }

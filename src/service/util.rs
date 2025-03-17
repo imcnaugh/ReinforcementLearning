@@ -1,8 +1,8 @@
 /// Calculates the new average given the current average, total count of items,
 /// and a newly added reward.
 ///
-/// This function is based on an incremental formula to calculate the average without 
-/// needing to sum all the previously added values. It updates the current average 
+/// This function is based on an incremental formula to calculate the average without
+/// needing to sum all the previously added values. It updates the current average
 /// by taking into account the new reward and the total number of items processed so far.
 ///
 /// # Arguments
@@ -29,11 +29,7 @@
 ///
 /// assert_eq!(o_1_average, o_n_average);
 /// ```
-pub fn calc_average(
-    current_average: f64,
-    total_count: i32,
-    new_reward: f64,
-) -> f64 {
+pub fn calc_average(current_average: f64, total_count: i32, new_reward: f64) -> f64 {
     current_average + (1.0 / total_count as f64) * (new_reward - current_average)
 }
 

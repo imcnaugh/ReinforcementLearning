@@ -1,0 +1,3 @@
+struct State {
+    id: String,
+}

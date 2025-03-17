@@ -1,6 +1,6 @@
-use std::fmt::{Display, Formatter};
-use crate::chapter_05::cards::{CardProvider, Value};
 use crate::chapter_05::cards::Value::Ace;
+use crate::chapter_05::cards::{CardProvider, Value};
+use std::fmt::{Display, Formatter};
 
 pub struct State<'a, P: CardProvider> {
     player_count: u8,
@@ -11,7 +11,12 @@ pub struct State<'a, P: CardProvider> {
 }
 
 impl<'a, P: CardProvider> State<'a, P> {
-    pub fn new(player_count: u8, dealer_showing: u8, usable_ace: bool, card_provider: &'a P) -> Self {
+    pub fn new(
+        player_count: u8,
+        dealer_showing: u8,
+        usable_ace: bool,
+        card_provider: &'a P,
+    ) -> Self {
         State {
             player_count,
             dealer_showing,
@@ -48,7 +53,8 @@ impl<'a, P: CardProvider> State<'a, P> {
             };
         }
 
-        self.previous_counts.push((self.player_count, self.usable_ace));
+        self.previous_counts
+            .push((self.player_count, self.usable_ace));
 
         new_card
     }
@@ -69,7 +75,7 @@ impl<'a, P: CardProvider> State<'a, P> {
                     } else {
                         dealer_count = dealer_count + new_card.get_value();
                     }
-                },
+                }
                 _ => {
                     dealer_count = dealer_count + new_card.get_value();
                 }
@@ -98,17 +104,21 @@ impl<'a, P: CardProvider> State<'a, P> {
 
 impl<'a, P: CardProvider> Display for State<'a, P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Player: {}, with Ace: {}, dealer: {},", self.player_count, self.usable_ace, self.dealer_showing)
+        write!(
+            f,
+            "Player: {}, with Ace: {}, dealer: {},",
+            self.player_count, self.usable_ace, self.dealer_showing
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::chapter_05::cards::Value;
     use crate::chapter_05::cards::Value::{Eight, Five, King, Seven, Six};
-    use super::*;
 
-    struct MockCardProvider{
+    struct MockCardProvider {
         card_to_return: Option<Value>,
     }
 
@@ -154,7 +164,6 @@ mod tests {
         assert_eq!(state.player_count, 16);
         assert_eq!(state.usable_ace, true);
         assert_eq!(state.dealer_showing, 0);
-
 
         let mock_card_provider = MockCardProvider::new(Some(King));
         let mut state = State::new(15, 0, false, &mock_card_provider);

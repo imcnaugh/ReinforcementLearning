@@ -265,7 +265,6 @@ impl MultiLineChartBuilder {
 
         area.fill(&WHITE).unwrap();
 
-
         let max_width = self.data.iter().map(|d| d.points.len()).max().unwrap() - 1;
 
         let max_element = self
@@ -276,7 +275,7 @@ impl MultiLineChartBuilder {
             .fold(f64::NEG_INFINITY, f64::max);
 
         let max_depth = self.data.len() - 1;
-        
+
         let x_axis = (0.0..max_width as f64).step(1.0);
         // let y_axis = (0.0..max_element).step(1.0);
         let y_axis = (-1.0..1.0).step(0.1);
@@ -284,7 +283,8 @@ impl MultiLineChartBuilder {
 
         let mut chart = ChartBuilder::on(&area)
             .caption("3D Plot Test", ("sans", 20))
-            .build_cartesian_3d(x_axis.clone(), y_axis.clone(), z_axis.clone()).unwrap();
+            .build_cartesian_3d(x_axis.clone(), y_axis.clone(), z_axis.clone())
+            .unwrap();
 
         chart.with_projection(|mut pb| {
             pb.yaw = 0.5;
@@ -302,16 +302,30 @@ impl MultiLineChartBuilder {
         let mut styles = vec![BLUE, RED, GREEN, BLACK].into_iter().cycle();
 
         self.data.iter().enumerate().for_each(|(i, d)| {
-            let line_data: Vec<(f64, f64, f64)> = d.points.iter().enumerate().map(|(x, y)| (x as f64, y.clone(), i as f64)).collect();
+            let line_data: Vec<(f64, f64, f64)> = d
+                .points
+                .iter()
+                .enumerate()
+                .map(|(x, y)| (x as f64, y.clone(), i as f64))
+                .collect();
             let style = styles.next().unwrap();
             chart
                 .draw_series(LineSeries::new(line_data, style.clone()))
                 .unwrap()
                 .label(d.label.clone().unwrap_or_else(|| i.to_string()))
-                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], ShapeStyle::from(style.clone()).stroke_width(2)));
+                .legend(move |(x, y)| {
+                    PathElement::new(
+                        vec![(x, y), (x + 20, y)],
+                        ShapeStyle::from(style.clone()).stroke_width(2),
+                    )
+                });
         });
 
-        chart.configure_series_labels().border_style(BLACK).draw().unwrap();
+        chart
+            .configure_series_labels()
+            .border_style(BLACK)
+            .draw()
+            .unwrap();
 
         // To avoid the IO failure being ignored silently, we manually call the present function
         area.present().expect("Unable to write result to file, please make sure 'plotters-doc-data' dir exists under current dir");
@@ -329,7 +343,6 @@ impl MultiLineChartBuilder {
         Ok(output_path)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -368,7 +381,6 @@ mod tests {
 
     #[test]
     fn plot_3d_graph_test() {
-
         let data = vec![1_f64, 1.2, 1.5, 1.2];
         let data_2 = data.clone().iter().map(|x| x + 0.3).collect();
 
@@ -376,7 +388,10 @@ mod tests {
         let d_2 = MultiLineChartData::new(data_2);
 
         let mut builder = MultiLineChartBuilder::new();
-        builder.set_path(PathBuf::from("output/multiLineChart.png")).add_data(d_1).add_data(d_2);
+        builder
+            .set_path(PathBuf::from("output/multiLineChart.png"))
+            .add_data(d_1)
+            .add_data(d_2);
         builder.create_chart().expect("TODO: panic message");
     }
 }
