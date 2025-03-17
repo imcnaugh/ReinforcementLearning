@@ -67,12 +67,17 @@ mod tests {
         if is_starting_action_hit {
             state.hit();
 
-            let state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
-            let is_policy_hit = match policy.get(state_id.as_str()) {
-                Some(hit) => *hit,
-                None => false,
-            };
-            while state.get_player_count() < 21 && is_policy_hit {
+            while state.get_player_count() < 21 {
+                let state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
+                let is_policy_hit = match policy.get(state_id.as_str()) {
+                    Some(hit) => *hit,
+                    None => false,
+                };
+
+                if !is_policy_hit {
+                    break;
+                }
+
                 state.hit();
             }
         }
@@ -80,7 +85,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 10000000;
+        let iteration_count = 100000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
         
@@ -147,13 +152,13 @@ mod tests {
         });
 
         println!("usable ace");
-        (12..=21).rev().for_each(|player_count| {
+        (11..=21).rev().for_each(|player_count| {
             let mut str = format!("player sum: {} | ", player_count);
             (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &true);
                 let policy_hit = match policy.get(state_id.as_str()) {
                     Some(hit) => *hit,
-                    None => false,
+                    None => true,
                 };
                 let char = match policy_hit {
                     true => 'H',
@@ -164,13 +169,13 @@ mod tests {
             println!("{}", str);
         });
         println!("no usable ace");
-        (12..=21).rev().for_each(|player_count| {
+        (11..=21).rev().for_each(|player_count| {
             let mut str = format!("player sum: {} | ", player_count);
             (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &false);
                 let policy_hit = match policy.get(state_id.as_str()) {
                     Some(hit) => hit.clone(),
-                    None => false,
+                    None => true,
                 };
                 let char = match policy_hit {
                     true => 'H',
