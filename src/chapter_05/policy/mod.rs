@@ -1,5 +1,7 @@
 mod stochastic;
 
+pub use stochastic::StochasticPolicy;
+
 trait Policy {
     fn pick_action_for_state(&self, state_id: &str) -> Result<&str, String>;
 

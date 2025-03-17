@@ -1,6 +1,6 @@
 pub mod blackjack;
 pub mod cards;
-mod policy;
+pub mod policy;
 mod state;
 
 #[cfg(test)]
