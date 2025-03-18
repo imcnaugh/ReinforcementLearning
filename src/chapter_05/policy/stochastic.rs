@@ -3,6 +3,9 @@ use rand::Rng;
 use std::collections::HashMap;
 
 pub struct StochasticPolicy {
+    /// A map of the state id as a string, and a list that contains a tuple of
+    ///  - f64: odds of taking action
+    ///  - String: action id as a string
     state_action_probabilities: HashMap<String, Vec<(f64, String)>>,
 }
 
@@ -87,10 +90,10 @@ impl Policy for StochasticPolicy {
         }
     }
 
-    fn get_actions_for_state(&self, state_id: &str) -> Result<&Vec<(f64, String)>, String> {
+    fn get_actions_for_state(&self, state_id: &str) -> Result<Vec<(f64, String)>, String> {
         match self.state_action_probabilities.get(state_id) {
             None => Err(format!("no actions found for state id: {}", state_id)),
-            Some(state_and_actions) => Ok(state_and_actions),
+            Some(state_and_actions) => Ok(state_and_actions.clone()),
         }
     }
 }
@@ -178,7 +181,7 @@ mod tests {
             .expect("set_state_action_probabilities failed");
 
         match stochastic_policy.get_actions_for_state(state_id) {
-            Ok(actions) => assert_eq!(actions, &state_action_probabilities),
+            Ok(actions) => assert_eq!(actions, state_action_probabilities),
             Err(_) => panic!("get_actions_for_state failed"),
         }
     }
