@@ -33,7 +33,7 @@ impl StochasticPolicy {
         }
 
         self.state_action_probabilities
-            .insert(state_id.to_string(), state_action_probabilities);
+            .insert(state_id.to_string().clone(), state_action_probabilities);
         Ok(())
     }
 
@@ -80,7 +80,7 @@ impl Policy for StochasticPolicy {
         if let Some(state_action_probabilities) = self.state_action_probabilities.get(state_id) {
             for (probability, action) in state_action_probabilities {
                 if random_number <= *probability {
-                    return Ok(action.as_str());
+                    return Ok(action);
                 }
                 random_number = random_number - *probability;
             }

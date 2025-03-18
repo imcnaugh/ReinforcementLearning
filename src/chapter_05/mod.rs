@@ -5,15 +5,16 @@ mod state;
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_05::blackjack::State;
+    use crate::chapter_05::blackjack::BlackJackState;
     use crate::chapter_05::cards::RandomCardProvider;
     use crate::service::MultiLineChartBuilder;
     use crate::service::MultiLineChartData;
     use rand::Rng;
     use std::collections::HashMap;
     use std::path::PathBuf;
+    use crate::chapter_05::policy::{Policy, StochasticPolicy};
 
-    fn hit_unless_above_20(state: &mut State<RandomCardProvider>) {
+    fn hit_unless_above_20(state: &mut BlackJackState<RandomCardProvider>) {
         loop {
             let current_count = state.get_player_count();
             let usable_ace = state.get_usable_ace();
@@ -40,7 +41,7 @@ mod tests {
                 let mut running_average: f64 = 0.00;
 
                 (0..500000).for_each(|i| {
-                    let mut state = State::new(
+                    let mut state = BlackJackState::new(
                         player_start_count,
                         dealer_showing_start,
                         player_usable_aces,
@@ -76,13 +77,13 @@ mod tests {
 
     fn play_episode(
         policy: &HashMap<String, bool>,
-        mut state: &mut State<RandomCardProvider>,
+        mut state: &mut BlackJackState<RandomCardProvider>,
         is_starting_action_hit: bool,
     ) {
         if is_starting_action_hit {
             state.hit();
 
-            while state.get_player_count() < 21 {
+            while state.get_player_count() <= 21 {
                 let state_id = get_state_id(
                     &state.get_player_count(),
                     &state.get_dealer_showing(),
@@ -104,7 +105,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 100000000;
+        let iteration_count = 1000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
 
@@ -120,7 +121,7 @@ mod tests {
             let starting_dealer_showing = rand::rng().random_range(dealer_showing_range.clone());
             let starting_player_usable_aces = rand::rng().random_bool(0.5);
 
-            let mut state = State::new(
+            let mut state = BlackJackState::new(
                 starting_player_count,
                 starting_dealer_showing,
                 starting_player_usable_aces,
@@ -233,5 +234,152 @@ mod tests {
         list.iter().enumerate().rev().for_each(|(i, v)| {
             println!("{}: {}", i, v);
         });
+    }
+
+    #[test]
+    fn test_monte_carlo_kinda_exploring_starts_but_with_e_soft_policy() {
+        let iteration_count = 100000000;
+        let e_soft_rate = 0.3;
+        let card_provider: RandomCardProvider = RandomCardProvider::new();
+
+        let player_count_range = 12_u8..=14;
+        let dealer_showing_range = 2_u8..=11;
+
+        let mut policy = StochasticPolicy::new();
+        let mut values: HashMap<String, (i32, f64)> = HashMap::new();
+
+        (0..iteration_count).for_each(|_| {
+            let starting_player_count = rand::rng().random_range(player_count_range.clone());
+            let starting_dealer_showing = rand::rng().random_range(dealer_showing_range.clone());
+            let starting_player_usable_aces = rand::rng().random_bool(0.5);
+
+            let mut state = BlackJackState::new(
+                starting_player_count,
+                starting_dealer_showing,
+                starting_player_usable_aces,
+                &card_provider,
+            );
+            let starting_state_id = get_state_id(
+                &starting_player_count,
+                &starting_dealer_showing,
+                &starting_player_usable_aces,
+            );
+
+            while state.get_player_count() <= 21 {
+                let current_state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
+                match policy.pick_action_for_state(&current_state_id) {
+                    Ok(a) => {
+                        if a == "stay" {
+                            break;
+                        }
+                    }
+                    Err(_) => (),
+                };
+                state.hit();
+            }
+
+            let reward = state.check_for_win();
+            let mut g = 0.0;
+
+            state
+                .get_previous_counts()
+                .iter()
+                .rev()
+                .enumerate()
+                .for_each(|(t, (player_count, usable_ace))| {
+                g = match t {
+                    0 => reward,
+                    _ => g,
+                };
+
+                let did_hit = match t {
+                    0 => false,
+                    _ => true,
+                };
+
+                if *player_count <= 21 {
+                    let state_id =
+                        get_state_id(player_count, &starting_dealer_showing, usable_ace);
+                    let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
+                    let new_value = match values.get(&state_action_id) {
+                        Some((count, current_average)) => (
+                            count + 1,
+                            crate::service::calc_average(*current_average, count + 1, g),
+                        ),
+                        None => (1, g),
+                    };
+                    values.insert(state_action_id, new_value);
+
+                    let hit_id = get_state_action_id(state_id.as_str(), true);
+                    let stay_id = get_state_action_id(state_id.as_str(), false);
+
+                    let hit_value = match values.get(&hit_id) {
+                        Some((count, value)) => value.clone(),
+                        None => 0_f64,
+                    };
+                    let stay_value = match values.get(&stay_id) {
+                        Some((count, value)) => value.clone(),
+                        None => 0_f64,
+                    };
+
+
+                    let best_action= if hit_value > stay_value {
+                        String::from("hit")
+                    } else {
+                        String::from("stay")
+                    };
+
+                    policy.set_state_actions_probabilities_using_e_soft_probabilities(
+                        state_id.as_str(),
+                        vec![String::from("hit"), String::from("stay")],
+                        e_soft_rate,
+                        best_action
+                    ).unwrap();
+                }
+            })
+        });
+
+        let hit_string = String::from("hit");
+        let stay_string = String::from("stay");
+
+        println!("usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &true);
+                let action = policy.get_actions_for_state(state_id.as_str()).unwrap();
+
+                let max_action = action.iter().max_by(|a, b| a.0.partial_cmp(&b.0).unwrap()).unwrap();
+
+                let char = if max_action.1 == hit_string {
+                    'H'
+                } else {
+                    'S'
+                };
+                str.push_str(&format!("{} ", char));
+            });
+            println!("{}", str);
+        });
+        println!("no usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &false);
+                let action = policy.get_actions_for_state(state_id.as_str()).unwrap();
+
+                let max_action = action.iter().max_by(|a, b| a.0.partial_cmp(&b.0).unwrap()).unwrap();
+
+                let char = if max_action.1 == hit_string {
+                    'H'
+                } else {
+                    'S'
+                };
+                str.push_str(&format!("{} ", char));
+            });
+            println!("{}", str);
+        });
+
+        println!("dealer showing:  2 3 4 5 6 7 8 9 10A");
+        println!("iterations: {}", iteration_count);
     }
 }

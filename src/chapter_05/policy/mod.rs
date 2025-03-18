@@ -5,7 +5,7 @@ pub use stochastic::StochasticPolicy;
 
 pub use deterministic::DeterministicPolicy;
 
-trait Policy {
+pub trait Policy {
     /// Returns a randomly chosen action id, for the given state id, based off the odds set for each
     /// action
     fn pick_action_for_state(&self, state_id: &str) -> Result<&str, String>;

@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use ReinforcementLearning::chapter_05::blackjack::State;
+use ReinforcementLearning::chapter_05::blackjack::BlackJackState;
 use ReinforcementLearning::chapter_05::cards::{CardProvider, RandomCardProvider, Value::Ace};
 
 fn main() {
@@ -19,7 +19,7 @@ fn main() {
     let dealer_card = card_provider.get_random_card().unwrap();
     let value = cards.iter().fold(0, |acc, card| acc + card.get_value());
 
-    let mut state = State::new(
+    let mut state = BlackJackState::new(
         value,
         dealer_card.get_value(),
         has_usable_ace,
