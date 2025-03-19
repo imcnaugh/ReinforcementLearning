@@ -1,5 +1,6 @@
 pub mod blackjack;
 pub mod cards;
+mod importance_sampling;
 pub mod policy;
 mod state;
 
@@ -7,12 +8,12 @@ mod state;
 mod tests {
     use crate::chapter_05::blackjack::BlackJackState;
     use crate::chapter_05::cards::RandomCardProvider;
+    use crate::chapter_05::policy::{Policy, StochasticPolicy};
     use crate::service::MultiLineChartBuilder;
     use crate::service::MultiLineChartData;
     use rand::Rng;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use crate::chapter_05::policy::{Policy, StochasticPolicy};
 
     fn hit_unless_above_20(state: &mut BlackJackState<RandomCardProvider>) {
         loop {
@@ -266,7 +267,11 @@ mod tests {
             );
 
             while state.get_player_count() <= 21 {
-                let current_state_id = get_state_id(&state.get_player_count(), &state.get_dealer_showing(), &state.get_usable_ace());
+                let current_state_id = get_state_id(
+                    &state.get_player_count(),
+                    &state.get_dealer_showing(),
+                    &state.get_usable_ace(),
+                );
                 match policy.pick_action_for_state(&current_state_id) {
                     Ok(a) => {
                         if a == "stay" {
@@ -287,56 +292,57 @@ mod tests {
                 .rev()
                 .enumerate()
                 .for_each(|(t, (player_count, usable_ace))| {
-                g = match t {
-                    0 => reward,
-                    _ => g,
-                };
-
-                let did_hit = match t {
-                    0 => false,
-                    _ => true,
-                };
-
-                if *player_count <= 21 {
-                    let state_id =
-                        get_state_id(player_count, &starting_dealer_showing, usable_ace);
-                    let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
-                    let new_value = match values.get(&state_action_id) {
-                        Some((count, current_average)) => (
-                            count + 1,
-                            crate::service::calc_average(*current_average, count + 1, g),
-                        ),
-                        None => (1, g),
-                    };
-                    values.insert(state_action_id, new_value);
-
-                    let hit_id = get_state_action_id(state_id.as_str(), true);
-                    let stay_id = get_state_action_id(state_id.as_str(), false);
-
-                    let hit_value = match values.get(&hit_id) {
-                        Some((count, value)) => value.clone(),
-                        None => 0_f64,
-                    };
-                    let stay_value = match values.get(&stay_id) {
-                        Some((count, value)) => value.clone(),
-                        None => 0_f64,
+                    g = match t {
+                        0 => reward,
+                        _ => g,
                     };
 
-
-                    let best_action= if hit_value > stay_value {
-                        String::from("hit")
-                    } else {
-                        String::from("stay")
+                    let did_hit = match t {
+                        0 => false,
+                        _ => true,
                     };
 
-                    policy.set_state_actions_probabilities_using_e_soft_probabilities(
-                        state_id.as_str(),
-                        vec![String::from("hit"), String::from("stay")],
-                        e_soft_rate,
-                        best_action
-                    ).unwrap();
-                }
-            })
+                    if *player_count <= 21 {
+                        let state_id =
+                            get_state_id(player_count, &starting_dealer_showing, usable_ace);
+                        let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
+                        let new_value = match values.get(&state_action_id) {
+                            Some((count, current_average)) => (
+                                count + 1,
+                                crate::service::calc_average(*current_average, count + 1, g),
+                            ),
+                            None => (1, g),
+                        };
+                        values.insert(state_action_id, new_value);
+
+                        let hit_id = get_state_action_id(state_id.as_str(), true);
+                        let stay_id = get_state_action_id(state_id.as_str(), false);
+
+                        let hit_value = match values.get(&hit_id) {
+                            Some((count, value)) => value.clone(),
+                            None => 0_f64,
+                        };
+                        let stay_value = match values.get(&stay_id) {
+                            Some((count, value)) => value.clone(),
+                            None => 0_f64,
+                        };
+
+                        let best_action = if hit_value > stay_value {
+                            String::from("hit")
+                        } else {
+                            String::from("stay")
+                        };
+
+                        policy
+                            .set_state_actions_probabilities_using_e_soft_probabilities(
+                                state_id.as_str(),
+                                vec![String::from("hit"), String::from("stay")],
+                                e_soft_rate,
+                                best_action,
+                            )
+                            .unwrap();
+                    }
+                })
         });
 
         let hit_string = String::from("hit");
@@ -349,13 +355,12 @@ mod tests {
                 let state_id = get_state_id(&player_count, &dealer_showing, &true);
                 let action = policy.get_actions_for_state(state_id.as_str()).unwrap();
 
-                let max_action = action.iter().max_by(|a, b| a.0.partial_cmp(&b.0).unwrap()).unwrap();
+                let max_action = action
+                    .iter()
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                    .unwrap();
 
-                let char = if max_action.1 == hit_string {
-                    'H'
-                } else {
-                    'S'
-                };
+                let char = if max_action.1 == hit_string { 'H' } else { 'S' };
                 str.push_str(&format!("{} ", char));
             });
             println!("{}", str);
@@ -367,13 +372,12 @@ mod tests {
                 let state_id = get_state_id(&player_count, &dealer_showing, &false);
                 let action = policy.get_actions_for_state(state_id.as_str()).unwrap();
 
-                let max_action = action.iter().max_by(|a, b| a.0.partial_cmp(&b.0).unwrap()).unwrap();
+                let max_action = action
+                    .iter()
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                    .unwrap();
 
-                let char = if max_action.1 == hit_string {
-                    'H'
-                } else {
-                    'S'
-                };
+                let char = if max_action.1 == hit_string { 'H' } else { 'S' };
                 str.push_str(&format!("{} ", char));
             });
             println!("{}", str);
