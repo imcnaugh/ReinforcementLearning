@@ -9,7 +9,7 @@ mod tests {
     use crate::chapter_05::blackjack::BlackJackState;
     use crate::chapter_05::cards::RandomCardProvider;
     use crate::chapter_05::policy::{DeterministicPolicy, Policy, StochasticPolicy};
-    use crate::service::{calc_average, LineChartBuilder, LineChartData, MultiLineChartBuilder};
+    use crate::service::{calc_average, mean_square_error, LineChartBuilder, LineChartData, MultiLineChartBuilder};
     use crate::service::MultiLineChartData;
     use rand::Rng;
     use std::collections::HashMap;
@@ -457,14 +457,16 @@ mod tests {
         //
         // assert_eq!(running_average, -0.27726);
 
-        let num_of_episodes = 1000;
+        let num_of_episodes = 10000;
         let num_of_runs = 100;
 
         let mut avg_org: Vec<f64> = vec![0.0; num_of_episodes];
         let mut avg_wei: Vec<f64> = vec![0.0; num_of_episodes];
 
         (0..num_of_runs).for_each(|run_number| {
-            let mut runs: Vec<(Vec<(String, String)>, f64)> = vec![];
+            let mut state_actions_and_rewards_for_each_episode: Vec<(Vec<(String, String)>, f64)> = vec![];
+            let mut ordinary_mean_squared_errors: Vec<f32> = Vec::new();
+            let mut weighted_mean_squared_errors: Vec<f32> = Vec::new();
 
             (0..num_of_episodes).for_each(|i| {
                 let mut state = BlackJackState::new(13, 2, true, &card_provider);
@@ -485,36 +487,29 @@ mod tests {
                 }
                 let reward = state.check_for_win();
                 let state_action_pairs = state_action_pairs[0..state_action_pairs.len() - 1].to_vec();
-                runs.push((state_action_pairs, reward));
-            });
+                state_actions_and_rewards_for_each_episode.push((state_action_pairs, reward));
 
-            let mut ordinary_mean_squared_errors: Vec<(usize, f32)> = Vec::new();
-            let mut weighted_mean_squared_errors: Vec<(usize, f32)> = Vec::new();
-
-            (0..=runs.len() - 1).for_each(|i| {
-                let run_subset = runs[0..=i].to_vec();
                 let weighted_importance = weighted_importance_sampling(
-                    &run_subset.to_vec(),
+                    &state_actions_and_rewards_for_each_episode,
                     &target_policy,
                     &behavior_policy
-                );
+                ).unwrap();
                 let ordinary_importance = ordinary_importance_sampling(
-                    &run_subset.to_vec(),
+                    &state_actions_and_rewards_for_each_episode,
                     &target_policy,
                     &behavior_policy
-                );
-                let ord = (ordinary_importance.unwrap() - expected).powf(2.0);
-                ordinary_mean_squared_errors.push((i+1, ord as f32));
-                let wei = (weighted_importance.unwrap() - expected).powf(2.0);
-                weighted_mean_squared_errors.push((i+1, wei as f32));
+                ).unwrap();
+
+                ordinary_mean_squared_errors.push(mean_square_error(expected, ordinary_importance) as f32);
+                weighted_mean_squared_errors.push(mean_square_error(expected, weighted_importance) as f32);
             });
 
             ordinary_mean_squared_errors.iter().enumerate().for_each(|(i, v)| {
-                let average = calc_average(avg_org[i], (run_number + 1) as i32, v.1 as f64);
+                let average = calc_average(avg_org[i], run_number + 1, *v as f64);
                 avg_org[i] = average;
             });
             weighted_mean_squared_errors.iter().enumerate().for_each(|(i, v)| {
-                let average = calc_average(avg_wei[i], (run_number + 1) as i32, v.1 as f64);
+                let average = calc_average(avg_wei[i], run_number + 1, *v as f64);
                 avg_wei[i] = average;
             });
         });
@@ -538,7 +533,7 @@ mod tests {
             .add_data(ordinary_chart_data)
             .add_data(weighted_chart_data)
             .set_path(PathBuf::from("output/chapter5/blackJack_values_off_policy.png"))
-            .set_title(format!("off policy blackjack mean squared error"));
+            .set_title(format!("off policy blackjack mean squared error, averaged over {} runs", num_of_runs));
 
         chart.create_chart().unwrap();
     }

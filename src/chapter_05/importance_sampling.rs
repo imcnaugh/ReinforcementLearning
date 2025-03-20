@@ -1,3 +1,4 @@
+use std::fmt::format;
 use crate::chapter_05::policy::Policy;
 use crate::service::calc_average;
 
@@ -17,19 +18,16 @@ pub fn ordinary_importance_sampling<TP: Policy, BP: Policy>(
     runs.iter()
         .enumerate()
         .try_fold(0.0, |current_average, (index, run)| {
-            let iteration = index + 1;
-            let state_action_pairs = &run.0;
-            let reward = run.1;
             let importance_ratio = calculate_importance_sampling_ratio(
-                &state_action_pairs,
+                &run.0,
                 target_policy,
                 behavior_policy,
             )?;
-            let adjusted_reward = reward * importance_ratio;
+            let adjusted_reward = run.1 * importance_ratio;
 
             Ok(calc_average(
                 current_average,
-                iteration as i32,
+                (index + 1) as i32,
                 adjusted_reward,
             ))
         })
@@ -93,7 +91,7 @@ fn find_odds_of_taking_action_at_state_for_policy<TP: Policy>(
             None => Ok(0.0),
             Some((odds, _)) => Ok(*odds),
         },
-        Err(_) => Ok(0.0),
+        Err(_) => Err(format!("could not find state: {}", state_id)),
     }
 }
 

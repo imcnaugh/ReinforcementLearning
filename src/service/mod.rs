@@ -8,3 +8,4 @@ pub use chart_service::MultiLineChartBuilder;
 pub use chart_service::MultiLineChartData;
 
 pub use util::calc_average;
+pub use util::mean_square_error;

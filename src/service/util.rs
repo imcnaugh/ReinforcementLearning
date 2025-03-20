@@ -33,6 +33,12 @@ pub fn calc_average(current_average: f64, total_count: i32, new_reward: f64) -> 
     current_average + (1.0 / total_count as f64) * (new_reward - current_average)
 }
 
+/// # Mean Square Error
+///
+pub fn mean_square_error(expected: f64, actual: f64) -> f64 {
+    (actual - expected).powf(2.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,5 +58,21 @@ mod tests {
     fn test_calc_average_2() {
         let average = calc_average(1.0, 2, 2.0);
         assert_eq!(average, 1.5);
+    }
+
+    #[test]
+    fn mean_square_error_test() {
+        let expected = 1.0;
+        let actual = 1.0;
+        let mse = mean_square_error(expected, actual);
+        assert_eq!(mse, 0.0);
+    }
+
+    #[test]
+    fn mean_square_error_test_2() {
+        let expected = 1.0;
+        let actual = 3.0;
+        let mse = mean_square_error(expected, actual);
+        assert_eq!(mse, 4.0);
     }
 }
