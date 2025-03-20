@@ -1,62 +1,24 @@
-use std::io::{self, Write};
-use ReinforcementLearning::chapter_05::blackjack::BlackJackState;
-use ReinforcementLearning::chapter_05::cards::{CardProvider, RandomCardProvider, Value::Ace};
+use eframe::egui;
 
 fn main() {
-    let card_provider = RandomCardProvider::new();
+    let options = eframe::NativeOptions {
+        ..Default::default()
+    };
 
-    let mut cards = vec![];
-    let mut has_usable_ace = false;
-    (0..2).for_each(|_| {
-        let card = card_provider.get_random_card().unwrap();
-        match card {
-            Ace => has_usable_ace = true,
-            _ => (),
-        };
-        cards.push(card);
-    });
-
-    let dealer_card = card_provider.get_random_card().unwrap();
-    let value = cards.iter().fold(0, |acc, card| acc + card.get_value());
-
-    let mut state = BlackJackState::new(
-        value,
-        dealer_card.get_value(),
-        has_usable_ace,
-        &card_provider,
+    eframe::run_native(
+        "My egui App",
+        options,
+        Box::new(|_cc| Ok(Box::new(MyApp))),
     );
 
-    loop {
-        if state.get_player_count() > 21 {
-            println!("player went over 21");
-            break;
-        }
+}
 
-        println!("dealer is showing: {}", dealer_card.get_value());
-        println!("player has: {}", state.get_player_count());
-        cards.iter().for_each(|card| print!("{:?}, ", card));
-        println!();
+struct MyApp;
 
-        print!("Enter 'h' to hit or 's' to stay:");
-        io::stdout().flush().unwrap(); // Ensure the prompt is displayed before input
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        let user_char = input.trim().chars().next().unwrap_or_default(); // Get the first character or default to '\0'
-
-        match user_char {
-            'h' => {
-                let new_card = state.hit();
-                println!("player was dealt: {:?}", new_card);
-                cards.push(new_card);
-            }
-            's' => break,
-            _ => (),
-        }
-        println!();
-        println!();
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.label("Hello world!");
+        });
     }
-
-    let result = state.check_for_win();
-
-    println!("{:?}", result);
 }
