@@ -67,21 +67,31 @@ pub fn weighted_importance_sampling<TP: Policy, BP: Policy>(
     Ok(numerator / denominator)
 }
 
-pub fn weighted_importance_sampling_possible<TP: Policy, BP: Policy>(
-    new_state_action_pair: &Vec<(String, String)>,
-    new_reward: f64,
-    current_average: f64,
-    cumulative_sum_of_weights: f64,
-    target_policy: &TP,
-    behavior_policy: &BP,
-) -> Result<f64, String> {
-    let idk = new_reward - current_average;
-    let w_n = calculate_importance_sampling_ratio(new_state_action_pair, target_policy, behavior_policy)?;
-    let idk_fraction = w_n / cumulative_sum_of_weights;
-    let idk_multiply = idk * idk_fraction;
-    let new_average = current_average + idk_multiply;
+pub fn weighted_importance_sampling_incremental<TP: Policy, BP: Policy>(
+    new_state_action_pairs: &Vec<(String, String)>, // State-action pairs for the new episode
+    new_reward: f64,                            // Return (G_n) for the new episode
+    current_average: f64,                       // Current value estimate (V_n)
+    cumulative_sum_of_weights: f64,             // Cumulative sum of weights (C_n)
+    target_policy: &TP,                         // Target policy
+    behavior_policy: &BP,                       // Behavior policy
+) -> Result<(f64, f64), String> {               // Returns (new_average, new_cumulative_sum)
+    // Calculate the importance sampling ratio (W_n) for the new episode
+    let importance_sampling_ratio = calculate_importance_sampling_ratio(new_state_action_pairs, target_policy, behavior_policy)?;
 
-    Ok(new_average)
+    // Update the cumulative sum of weights (C_{n+1} = C_n + W_n)
+    let new_cumulative_sum = cumulative_sum_of_weights + importance_sampling_ratio;
+
+    // Update the value estimate (V_{n+1})
+    let new_average = if cumulative_sum_of_weights == 0.0 {
+        // First episode: V_1 = G_1
+        new_reward
+    } else {
+        // Incremental update: V_{n+1} = V_n + (W_n / C_{n+1}) * (G_n - V_n)
+        current_average + (importance_sampling_ratio / new_cumulative_sum) * (new_reward - current_average)
+    };
+
+    // Return the new average and cumulative sum
+    Ok((new_average, new_cumulative_sum))
 }
 
 pub fn calculate_importance_sampling_ratio<TP: Policy, BP: Policy>(
@@ -251,10 +261,10 @@ mod tests {
         ]).unwrap();
 
         let episodes = vec![
-            state_action_pairs_and_reward_4,
             state_action_pairs_and_reward_2,
             state_action_pairs_and_reward_1,
-            state_action_pairs_and_reward_3,
+            state_action_pairs_and_reward_4,
+            // state_action_pairs_and_reward_3,
         ];
         let original_weighted_importance_value = weighted_importance_sampling(
             &episodes,
@@ -266,22 +276,23 @@ mod tests {
 
         let mut current_average_with_new_method = 0.0;
         let mut cumulative_sum_of_weights = 0.0;
+
         for run in episodes {
-            cumulative_sum_of_weights  = match calculate_importance_sampling_ratio(&run.0, &target_policy, &behavior_policy) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            let new_average = weighted_importance_sampling_possible(
-                &run.0,
-                run.1,
+            let (new_average, new_cumulative_sum) = weighted_importance_sampling_incremental(
+                &run.0, // State-action pairs for the episode
+                run.1,  // Reward for the episode
                 current_average_with_new_method,
                 cumulative_sum_of_weights,
                 &target_policy,
                 &behavior_policy,
             ).unwrap();
 
+            // Update the cumulative sum of weights and the current average
+            cumulative_sum_of_weights = new_cumulative_sum;
             current_average_with_new_method = new_average;
         }
+
+        println!("Final weighted importance sampling estimate: {}", current_average_with_new_method);
 
         println!("new weighted importance value: {}", current_average_with_new_method);
 
