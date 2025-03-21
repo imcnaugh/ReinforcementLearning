@@ -463,7 +463,7 @@ mod tests {
         //
         // assert_eq!(running_average, -0.27726);
 
-        let num_of_episodes = 100;
+        let num_of_episodes = 1000;
         let num_of_runs = 100;
 
         let mut ordinary_mean_squared_errors: Vec<Vec<f32>> = vec![vec![]; num_of_episodes];
@@ -537,6 +537,10 @@ mod tests {
 
         let avg_org: Vec<(f32, f32)> = avg_org.iter().enumerate().map(|(i, v)| { (i as f32, *v as f32) }).collect();
         let avg_wei: Vec<(f32, f32)> = avg_wei.iter().enumerate().map(|(i, v)| { (i as f32, *v as f32) }).collect();
+
+
+        println!("Last value of avg_org: {:?}", avg_org.last().unwrap().1);
+        println!("Last value of avg_wei: {:?}", avg_wei.last().unwrap().1);
 
         let ordinary_chart_data = LineChartData::new(
             "Ordinary mean squared error".to_string(),

@@ -109,7 +109,7 @@ fn find_odds_of_taking_action_at_state_for_policy<TP: Policy>(
     match policy.get_actions_for_state(state_id) {
         Ok(actions) => match actions.iter().find(|&a| a.1.eq(action_id)) {
             Some((odds, _)) => Ok(*odds),
-            None => Err(format!("could not find action: {}", action_id)),
+            None => Ok(0.0),
         },
         Err(_) => Err(format!("could not find state: {}", state_id)),
     }
