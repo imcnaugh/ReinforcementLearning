@@ -70,11 +70,7 @@ impl<'a, P: CardProvider> BlackJackState<'a, P> {
             let new_card_value = Self::get_new_card_for_dealer(dealer_count, new_card);
             dealer_count = dealer_count + new_card_value;
 
-            return if dealer_count == 21 {
-                0.0
-            } else {
-                1.0
-            }
+            return if dealer_count == 21 { 0.0 } else { 1.0 };
         }
 
         while dealer_count < 17 {
@@ -106,9 +102,7 @@ impl<'a, P: CardProvider> BlackJackState<'a, P> {
                     new_card.get_value()
                 }
             }
-            _ => {
-                new_card.get_value()
-            }
+            _ => new_card.get_value(),
         };
         new_value
     }

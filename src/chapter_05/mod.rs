@@ -10,16 +10,19 @@ mod tests {
     use crate::chapter_05::cards::RandomCardProvider;
     use crate::chapter_05::importance_sampling::{
         ordinary_importance_sampling, weighted_importance_sampling,
+        weighted_importance_sampling_incremental,
     };
     use crate::chapter_05::policy::{DeterministicPolicy, Policy, StochasticPolicy};
     use crate::service::MultiLineChartData;
     use crate::service::{
         calc_average, mean_square_error, LineChartBuilder, LineChartData, MultiLineChartBuilder,
     };
+    use egui::Key::S;
     use plotters::prelude::ShapeStyle;
     use plotters::style::{BLUE, RED};
     use rand::Rng;
     use std::collections::HashMap;
+    use std::hash::Hash;
     use std::path::PathBuf;
 
     fn hit_unless_above_20(state: &mut BlackJackState<RandomCardProvider>) {
@@ -172,10 +175,9 @@ mod tests {
                             get_state_id(player_count, &starting_dealer_showing, usable_ace);
                         let state_action_id = get_state_action_id(state_id.as_str(), did_hit);
                         let new_value = match values.get(&state_action_id) {
-                            Some((count, current_average)) => (
-                                count + 1,
-                                calc_average(*current_average, count + 1, g),
-                            ),
+                            Some((count, current_average)) => {
+                                (count + 1, calc_average(*current_average, count + 1, g))
+                            }
                             None => (1, g),
                         };
                         values.insert(state_action_id, new_value);
@@ -580,5 +582,93 @@ mod tests {
             ));
 
         chart.create_chart().unwrap();
+    }
+
+    #[test]
+    fn off_policy_general_policy_iteration_for_blackjack() {
+        let number_of_episodes = 10000;
+        let player_count_starting_range = 11..=21;
+        let dealer_showing_starting_range = 2..=11;
+
+        let card_provider: RandomCardProvider = RandomCardProvider::new();
+        let state_action_values: HashMap<String, f64> = HashMap::new();
+        let state_action_weights: HashMap<String, f64> = HashMap::new();
+        let mut target_policy = DeterministicPolicy::new();
+
+        let mut behavior_policy = StochasticPolicy::new();
+        (2..=11).for_each(|dealer_showing| {
+            vec![true, false].iter().for_each(|usable_ace| {
+                (11..=21).for_each(|player_count| {
+                    let state_id = get_state_id(&player_count, &dealer_showing, &usable_ace);
+                    let state_action_pairs =
+                        vec![(0.5, String::from("hit")), (0.5, String::from("stay"))];
+                    behavior_policy
+                        .set_state_action_probabilities(&state_id, state_action_pairs)
+                        .unwrap();
+                })
+            })
+        });
+
+        (0..number_of_episodes).for_each(|i| {
+            let starting_player_count =
+                rand::rng().random_range(player_count_starting_range.clone());
+            let starting_dealer_showing =
+                rand::rng().random_range(dealer_showing_starting_range.clone());
+            let starting_player_usable_aces = rand::rng().random_bool(0.5);
+
+            let mut blackjack_state = BlackJackState::new(
+                starting_player_count,
+                starting_dealer_showing,
+                starting_player_usable_aces,
+                &card_provider,
+            );
+
+            loop {
+                if blackjack_state.get_player_count() > 21 {
+                    break;
+                }
+                let state_id = get_state_id(
+                    &blackjack_state.get_player_count(),
+                    &blackjack_state.get_dealer_showing(),
+                    &blackjack_state.get_usable_ace(),
+                );
+                let action = behavior_policy
+                    .pick_action_for_state(state_id.as_str())
+                    .unwrap_or_else(|_| "stay");
+                if action == "stay" {
+                    break;
+                } else {
+                    blackjack_state.hit();
+                }
+            }
+            let reward = blackjack_state.check_for_win();
+
+            let mut g = 0.0;
+            let mut w = 1.0;
+
+            blackjack_state
+                .get_previous_counts()
+                .iter()
+                .rev()
+                .enumerate()
+                .for_each(|(t, (player_count, usable_ace))| {
+                    let state_id = get_state_id(
+                        player_count,
+                        &blackjack_state.get_dealer_showing(),
+                        usable_ace,
+                    );
+                    let current_cumulative_weight = match state_action_weights.get(&state_id) {
+                        None => 0.0,
+                        Some(cumulative_weight) => *cumulative_weight,
+                    };
+
+                    let steps = blackjack_state.get_previous_counts()[t..].to_vec();
+
+                    let (new_average, new_cumulative_sum) =
+                        weighted_importance_sampling_incremental();
+
+                    let current_cumulative_weight = current_cumulative_weight + w;
+                })
+        });
     }
 }
