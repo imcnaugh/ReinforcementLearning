@@ -65,22 +65,22 @@ impl<'a, P: CardProvider> BlackJackState<'a, P> {
         }
 
         let mut dealer_count = self.dealer_showing;
+        if self.player_count == 21 && self.previous_counts.len() == 1 {
+            let new_card = self.card_provider.get_random_card().unwrap();
+            let new_card_value = Self::get_new_card_for_dealer(dealer_count, new_card);
+            dealer_count = dealer_count + new_card_value;
+
+            return if dealer_count == 21 {
+                0.0
+            } else {
+                1.0
+            }
+        }
+
         while dealer_count < 17 {
             let new_card = self.card_provider.get_random_card().unwrap();
-
-            match new_card {
-                Ace => {
-                    if dealer_count + new_card.get_value() > 21 {
-                        dealer_count = dealer_count + new_card.get_value() - 10;
-                    } else {
-                        dealer_count = dealer_count + new_card.get_value();
-                    }
-                }
-                _ => {
-                    dealer_count = dealer_count + new_card.get_value();
-                }
-            }
-
+            let new_value = Self::get_new_card_for_dealer(dealer_count, new_card);
+            dealer_count = dealer_count + new_value;
             // println!("dealer was dealt: {:?} is showing: {}", new_card, dealer_count);
         }
 
@@ -95,6 +95,22 @@ impl<'a, P: CardProvider> BlackJackState<'a, P> {
         } else {
             0.0
         }
+    }
+
+    fn get_new_card_for_dealer(dealer_count: u8, new_card: Value) -> u8 {
+        let new_value = match new_card {
+            Ace => {
+                if dealer_count + new_card.get_value() > 21 {
+                    new_card.get_value() - 10
+                } else {
+                    new_card.get_value()
+                }
+            }
+            _ => {
+                new_card.get_value()
+            }
+        };
+        new_value
     }
 
     pub fn print_previous_counts(&self) {

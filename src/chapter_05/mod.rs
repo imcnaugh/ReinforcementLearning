@@ -88,6 +88,10 @@ mod tests {
         mut state: &mut BlackJackState<RandomCardProvider>,
         is_starting_action_hit: bool,
     ) {
+        if state.get_player_count() == 21 {
+            return;
+        }
+
         if is_starting_action_hit {
             state.hit();
 
@@ -113,7 +117,7 @@ mod tests {
 
     #[test]
     fn test_monte_carlo_exploring_starts_for_blackjack() {
-        let iteration_count = 1000000;
+        let iteration_count = 100000000;
         let discount_rate = 1.0;
         let card_provider: RandomCardProvider = RandomCardProvider::new();
 
@@ -170,7 +174,7 @@ mod tests {
                         let new_value = match values.get(&state_action_id) {
                             Some((count, current_average)) => (
                                 count + 1,
-                                crate::service::calc_average(*current_average, count + 1, g),
+                                calc_average(*current_average, count + 1, g),
                             ),
                             None => (1, g),
                         };
@@ -232,7 +236,7 @@ mod tests {
             println!("{}", str);
         });
 
-        println!("dealer showing:  2 3 4 5 6 7 8 9 10A");
+        println!("dealer showing:  2 3 4 5 6 7 8 9 10A ");
         println!("iterations: {}", iteration_count);
     }
 
