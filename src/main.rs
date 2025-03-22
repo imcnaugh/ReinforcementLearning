@@ -5,12 +5,7 @@ fn main() {
         ..Default::default()
     };
 
-    eframe::run_native(
-        "My egui App",
-        options,
-        Box::new(|_cc| Ok(Box::new(MyApp))),
-    );
-
+    eframe::run_native("My egui App", options, Box::new(|_cc| Ok(Box::new(MyApp))));
 }
 
 struct MyApp;

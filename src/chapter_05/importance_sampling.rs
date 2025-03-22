@@ -1,6 +1,6 @@
-use std::fmt::format;
 use crate::chapter_05::policy::Policy;
 use crate::service::calc_average;
+use std::fmt::format;
 
 /// # Ordinary importance sampling
 ///
@@ -18,11 +18,8 @@ pub fn ordinary_importance_sampling<TP: Policy, BP: Policy>(
     runs.iter()
         .enumerate()
         .try_fold(0.0, |current_average, (index, run)| {
-            let importance_ratio = calculate_importance_sampling_ratio(
-                &run.0,
-                target_policy,
-                behavior_policy,
-            )?;
+            let importance_ratio =
+                calculate_importance_sampling_ratio(&run.0, target_policy, behavior_policy)?;
             let adjusted_reward = run.1 * importance_ratio;
 
             Ok(calc_average(
@@ -50,12 +47,12 @@ pub fn weighted_importance_sampling<TP: Policy, BP: Policy>(
     let mut denominator = 0.0;
 
     runs.iter().try_for_each(|run| {
-        match calculate_importance_sampling_ratio(&run.0, target_policy, behavior_policy){
+        match calculate_importance_sampling_ratio(&run.0, target_policy, behavior_policy) {
             Ok(importance_sampling_ratio) => {
                 numerator += run.1 * importance_sampling_ratio;
                 denominator += importance_sampling_ratio;
                 Ok::<(), String>(())
-            },
+            }
             Err(_) => Ok::<(), String>(()),
         }
     })?;
@@ -69,29 +66,34 @@ pub fn weighted_importance_sampling<TP: Policy, BP: Policy>(
 
 pub fn weighted_importance_sampling_incremental<TP: Policy, BP: Policy>(
     new_state_action_pairs: &Vec<(String, String)>, // State-action pairs for the new episode
-    new_reward: f64,                            // Return (G_n) for the new episode
-    current_average: f64,                       // Current value estimate (V_n)
-    cumulative_sum_of_weights: f64,             // Cumulative sum of weights (C_n)
-    target_policy: &TP,                         // Target policy
-    behavior_policy: &BP,                       // Behavior policy
-) -> Result<(f64, f64), String> {               // Returns (new_average, new_cumulative_sum)
+    new_reward: f64,                                // Return (G_n) for the new episode
+    current_average: f64,                           // Current value estimate (V_n)
+    cumulative_sum_of_weights: Option<f64>,         // Cumulative sum of weights (C_n)
+    target_policy: &TP,                             // Target policy
+    behavior_policy: &BP,                           // Behavior policy
+) -> Result<(f64, Option<f64>), String> {
+    // Returns (new_average, new_cumulative_sum)
     // Calculate the importance sampling ratio (W_n) for the new episode
-    let importance_sampling_ratio = calculate_importance_sampling_ratio(new_state_action_pairs, target_policy, behavior_policy)?;
+    let importance_sampling_ratio = calculate_importance_sampling_ratio(
+        new_state_action_pairs,
+        target_policy,
+        behavior_policy,
+    )?;
 
     // Update the cumulative sum of weights (C_{n+1} = C_n + W_n)
-    let new_cumulative_sum = cumulative_sum_of_weights + importance_sampling_ratio;
+    let new_cumulative_sum = cumulative_sum_of_weights.unwrap_or(0.0) + importance_sampling_ratio;
 
     // Update the value estimate (V_{n+1})
-    let new_average = if cumulative_sum_of_weights == 0.0 {
-        // First episode: V_1 = G_1
-        new_reward
-    } else {
-        // Incremental update: V_{n+1} = V_n + (W_n / C_{n+1}) * (G_n - V_n)
-        current_average + (importance_sampling_ratio / new_cumulative_sum) * (new_reward - current_average)
+    let new_average = match cumulative_sum_of_weights {
+        None => new_reward,
+        Some(_) => {
+            current_average
+                + (importance_sampling_ratio / new_cumulative_sum) * (new_reward - current_average)
+        }
     };
 
     // Return the new average and cumulative sum
-    Ok((new_average, new_cumulative_sum))
+    Ok((new_average, Some(new_cumulative_sum)))
 }
 
 pub fn calculate_importance_sampling_ratio<TP: Policy, BP: Policy>(
@@ -149,7 +151,10 @@ mod tests {
                 state_action_pairs[0].1.to_string(),
             )
             .unwrap();
-        let state_action_pairs: Vec<(String, String)> = state_action_pairs.iter().map(|x| (x.0.to_string(), x.1.to_string())).collect();
+        let state_action_pairs: Vec<(String, String)> = state_action_pairs
+            .iter()
+            .map(|x| (x.0.to_string(), x.1.to_string()))
+            .collect();
 
         let importance_ratio = calculate_importance_sampling_ratio(
             &state_action_pairs,
@@ -180,7 +185,10 @@ mod tests {
             )
             .unwrap();
 
-        let state_action_pairs: Vec<(String, String)> = state_action_pairs.iter().map(|x| (x.0.to_string(), x.1.to_string())).collect();
+        let state_action_pairs: Vec<(String, String)> = state_action_pairs
+            .iter()
+            .map(|x| (x.0.to_string(), x.1.to_string()))
+            .collect();
         let runs = vec![(state_action_pairs, 10.0)];
 
         let ordinary_importance_sampling =
@@ -209,7 +217,10 @@ mod tests {
             )
             .unwrap();
 
-        let state_action_pairs: Vec<(String, String)> = state_action_pairs.iter().map(|x| (x.0.to_string(), x.1.to_string())).collect();
+        let state_action_pairs: Vec<(String, String)> = state_action_pairs
+            .iter()
+            .map(|x| (x.0.to_string(), x.1.to_string()))
+            .collect();
         let runs = vec![(state_action_pairs, 10.0)];
 
         let weighted_importance_sampling =
@@ -220,29 +231,40 @@ mod tests {
 
     #[test]
     fn compare_weighted_importance_sampling_methods() {
-        let state_action_pairs_and_reward_1 = (vec![
-            ("s1".to_string(), "s1>s2".to_string()),
-            ("s2".to_string(), "s2>s3".to_string()),
-            ("s3".to_string(), "s3>t".to_string()),
-        ], 10.0);
+        let state_action_pairs_and_reward_1 = (
+            vec![
+                ("s1".to_string(), "s1>s2".to_string()),
+                ("s2".to_string(), "s2>s3".to_string()),
+                ("s3".to_string(), "s3>t".to_string()),
+            ],
+            10.0,
+        );
 
-        let state_action_pairs_and_reward_2 = (vec![
-            ("s1".to_string(), "s1>s2".to_string()),
-            ("s2".to_string(), "s2>s3".to_string()),
-            ("s3".to_string(), "s3>t".to_string()),
-        ], 0.0);
+        let state_action_pairs_and_reward_2 = (
+            vec![
+                ("s1".to_string(), "s1>s2".to_string()),
+                ("s2".to_string(), "s2>s3".to_string()),
+                ("s3".to_string(), "s3>t".to_string()),
+            ],
+            0.0,
+        );
 
+        let state_action_pairs_and_reward_3 = (
+            vec![
+                ("s1".to_string(), "s1>s2".to_string()),
+                ("s2".to_string(), "s2>s3".to_string()),
+                ("s3".to_string(), "s3>t".to_string()),
+            ],
+            10.0,
+        );
 
-        let state_action_pairs_and_reward_3 = (vec![
-            ("s1".to_string(), "s1>s2".to_string()),
-            ("s2".to_string(), "s2>s3".to_string()),
-            ("s3".to_string(), "s3>t".to_string()),
-        ], 10.0);
-
-        let state_action_pairs_and_reward_4 = (vec![
-            ("s1".to_string(), "s1>s2".to_string()),
-            ("s2".to_string(), "s2>t".to_string()),
-        ], 0.0);
+        let state_action_pairs_and_reward_4 = (
+            vec![
+                ("s1".to_string(), "s1>s2".to_string()),
+                ("s2".to_string(), "s2>t".to_string()),
+            ],
+            0.0,
+        );
 
         let mut target_policy = DeterministicPolicy::new();
         target_policy.set_action_for_state("s1", "s1>s2");
@@ -250,15 +272,21 @@ mod tests {
         target_policy.set_action_for_state("s3", "s3>t");
 
         let mut behavior_policy = StochasticPolicy::new();
-        behavior_policy.set_state_action_probabilities("s1", vec![(1.0, "s1>s2".to_string())]).unwrap();
-        behavior_policy.set_state_action_probabilities("s2", vec![
-            (0.9, "s2>s3".to_string()),
-            (0.1, "s2>t".to_string()),
-        ]).unwrap();
-        behavior_policy.set_state_action_probabilities("s3", vec![
-            (0.3, "s3>t".to_string()),
-            (0.7, "s3>t".to_string())
-        ]).unwrap();
+        behavior_policy
+            .set_state_action_probabilities("s1", vec![(1.0, "s1>s2".to_string())])
+            .unwrap();
+        behavior_policy
+            .set_state_action_probabilities(
+                "s2",
+                vec![(0.9, "s2>s3".to_string()), (0.1, "s2>t".to_string())],
+            )
+            .unwrap();
+        behavior_policy
+            .set_state_action_probabilities(
+                "s3",
+                vec![(0.3, "s3>t".to_string()), (0.7, "s3>t".to_string())],
+            )
+            .unwrap();
 
         let episodes = vec![
             state_action_pairs_and_reward_2,
@@ -266,16 +294,16 @@ mod tests {
             state_action_pairs_and_reward_4,
             // state_action_pairs_and_reward_3,
         ];
-        let original_weighted_importance_value = weighted_importance_sampling(
-            &episodes,
-            &target_policy,
-            &behavior_policy,
-        ).unwrap();
+        let original_weighted_importance_value =
+            weighted_importance_sampling(&episodes, &target_policy, &behavior_policy).unwrap();
 
-        println!("original weighted importance value: {}", original_weighted_importance_value);
+        println!(
+            "original weighted importance value: {}",
+            original_weighted_importance_value
+        );
 
         let mut current_average_with_new_method = 0.0;
-        let mut cumulative_sum_of_weights = 0.0;
+        let mut cumulative_sum_of_weights: Option<f64> = None;
 
         for run in episodes {
             let (new_average, new_cumulative_sum) = weighted_importance_sampling_incremental(
@@ -285,16 +313,23 @@ mod tests {
                 cumulative_sum_of_weights,
                 &target_policy,
                 &behavior_policy,
-            ).unwrap();
+            )
+            .unwrap();
 
             // Update the cumulative sum of weights and the current average
             cumulative_sum_of_weights = new_cumulative_sum;
             current_average_with_new_method = new_average;
         }
 
-        println!("Final weighted importance sampling estimate: {}", current_average_with_new_method);
+        println!(
+            "Final weighted importance sampling estimate: {}",
+            current_average_with_new_method
+        );
 
-        println!("new weighted importance value: {}", current_average_with_new_method);
+        println!(
+            "new weighted importance value: {}",
+            current_average_with_new_method
+        );
 
         let diff = (original_weighted_importance_value - current_average_with_new_method).abs();
         assert!(diff < 0.00000000001);

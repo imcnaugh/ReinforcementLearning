@@ -8,15 +8,19 @@ mod state;
 mod tests {
     use crate::chapter_05::blackjack::BlackJackState;
     use crate::chapter_05::cards::RandomCardProvider;
+    use crate::chapter_05::importance_sampling::{
+        ordinary_importance_sampling, weighted_importance_sampling,
+    };
     use crate::chapter_05::policy::{DeterministicPolicy, Policy, StochasticPolicy};
-    use crate::service::{calc_average, mean_square_error, LineChartBuilder, LineChartData, MultiLineChartBuilder};
     use crate::service::MultiLineChartData;
+    use crate::service::{
+        calc_average, mean_square_error, LineChartBuilder, LineChartData, MultiLineChartBuilder,
+    };
+    use plotters::prelude::ShapeStyle;
+    use plotters::style::{BLUE, RED};
     use rand::Rng;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use plotters::prelude::ShapeStyle;
-    use plotters::style::{BLUE, RED};
-    use crate::chapter_05::importance_sampling::{ordinary_importance_sampling, weighted_importance_sampling};
 
     fn hit_unless_above_20(state: &mut BlackJackState<RandomCardProvider>) {
         loop {
@@ -397,38 +401,29 @@ mod tests {
         let mut behavior_policy = StochasticPolicy::new();
         let expected = -0.26938;
         (2..=11).for_each(|dealer_showing| {
-            vec!(true, false).iter().for_each(|usable_ace| {
+            vec![true, false].iter().for_each(|usable_ace| {
                 (13..20).for_each(|player_count| {
                     let state_id = get_state_id(&player_count, &dealer_showing, &usable_ace);
                     target_policy.set_action_for_state(&state_id, "hit");
 
-                    let stochastic_actions = vec![
-                        (0.5, String::from("hit")),
-                        (0.5, String::from("stay"))
-                    ];
-                    behavior_policy.set_state_action_probabilities(
-                        &state_id,
-                        stochastic_actions
-                    ).unwrap()
+                    let stochastic_actions =
+                        vec![(0.5, String::from("hit")), (0.5, String::from("stay"))];
+                    behavior_policy
+                        .set_state_action_probabilities(&state_id, stochastic_actions)
+                        .unwrap()
                 });
                 (20..=31).for_each(|player_count| {
                     let state_id = get_state_id(&player_count, &dealer_showing, &usable_ace);
                     target_policy.set_action_for_state(&state_id, "stay");
 
-                    let stochastic_actions = if player_count <= 21{
-                        vec![
-                            (0.5, String::from("hit")),
-                            (0.5, String::from("stay"))
-                        ]
+                    let stochastic_actions = if player_count <= 21 {
+                        vec![(0.5, String::from("hit")), (0.5, String::from("stay"))]
                     } else {
-                        vec![
-                            (1.0, String::from("stay"))
-                        ]
+                        vec![(1.0, String::from("stay"))]
                     };
-                    behavior_policy.set_state_action_probabilities(
-                        &state_id,
-                        stochastic_actions
-                    ).unwrap()
+                    behavior_policy
+                        .set_state_action_probabilities(&state_id, stochastic_actions)
+                        .unwrap()
                 });
             })
         });
@@ -470,7 +465,8 @@ mod tests {
         let mut weighted_mean_squared_errors: Vec<Vec<f32>> = vec![vec![]; num_of_episodes];
 
         (0..num_of_runs).for_each(|run_number| {
-            let mut state_actions_and_rewards_for_each_episode: Vec<(Vec<(String, String)>, f64)> = vec![];
+            let mut state_actions_and_rewards_for_each_episode: Vec<(Vec<(String, String)>, f64)> =
+                vec![];
 
             (0..num_of_episodes).for_each(|i| {
                 let mut state = BlackJackState::new(13, 2, true, &card_provider);
@@ -481,7 +477,9 @@ mod tests {
                         &state.get_dealer_showing(),
                         &state.get_usable_ace(),
                     );
-                    let action = behavior_policy.pick_action_for_state(state_id.as_str()).unwrap_or_else(|_| "stay");
+                    let action = behavior_policy
+                        .pick_action_for_state(state_id.as_str())
+                        .unwrap_or_else(|_| "stay");
                     if action == "stay" {
                         state_action_pairs.push((state_id.clone(), "stay".to_string()));
                         break;
@@ -497,11 +495,11 @@ mod tests {
                     &state_actions_and_rewards_for_each_episode,
                     &target_policy,
                     &behavior_policy,
-                ){
+                ) {
                     Ok(weighted_importance) => {
                         let mean_square_error = mean_square_error(expected, weighted_importance);
                         weighted_mean_squared_errors[i].push(mean_square_error as f32);
-                    },
+                    }
                     Err(_) => (),
                 };
                 match ordinary_importance_sampling(
@@ -521,23 +519,35 @@ mod tests {
         let mut avg_org: Vec<f64> = vec![0.0; num_of_episodes];
         let mut avg_wei: Vec<f64> = vec![0.0; num_of_episodes];
 
-        ordinary_mean_squared_errors.iter().enumerate().for_each(|(run_index, v)| {
-            let a = v.iter().enumerate().fold(0.0, |acc, (episode_index, x)| {
-                calc_average(acc, (episode_index + 1) as i32, *x as f64)
+        ordinary_mean_squared_errors
+            .iter()
+            .enumerate()
+            .for_each(|(run_index, v)| {
+                let a = v.iter().enumerate().fold(0.0, |acc, (episode_index, x)| {
+                    calc_average(acc, (episode_index + 1) as i32, *x as f64)
+                });
+                avg_org[run_index] = a;
             });
-            avg_org[run_index] = a;
-        });
-        weighted_mean_squared_errors.iter().enumerate().for_each(|(run_index, v)| {
-            let a = v.iter().enumerate().fold(0.0, |acc, (episode_index, x)| {
-                calc_average(acc, (episode_index + 1) as i32, *x as f64)
+        weighted_mean_squared_errors
+            .iter()
+            .enumerate()
+            .for_each(|(run_index, v)| {
+                let a = v.iter().enumerate().fold(0.0, |acc, (episode_index, x)| {
+                    calc_average(acc, (episode_index + 1) as i32, *x as f64)
+                });
+                avg_wei[run_index] = a;
             });
-            avg_wei[run_index] = a;
-        });
 
-
-        let avg_org: Vec<(f32, f32)> = avg_org.iter().enumerate().map(|(i, v)| { (i as f32, *v as f32) }).collect();
-        let avg_wei: Vec<(f32, f32)> = avg_wei.iter().enumerate().map(|(i, v)| { (i as f32, *v as f32) }).collect();
-
+        let avg_org: Vec<(f32, f32)> = avg_org
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i as f32, *v as f32))
+            .collect();
+        let avg_wei: Vec<(f32, f32)> = avg_wei
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (i as f32, *v as f32))
+            .collect();
 
         println!("Last value of avg_org: {:?}", avg_org.last().unwrap().1);
         println!("Last value of avg_wei: {:?}", avg_wei.last().unwrap().1);
@@ -545,20 +555,25 @@ mod tests {
         let ordinary_chart_data = LineChartData::new(
             "Ordinary mean squared error".to_string(),
             avg_org,
-            ShapeStyle::from(&RED)
+            ShapeStyle::from(&RED),
         );
         let weighted_chart_data = LineChartData::new(
             "Weighted mean squared error".to_string(),
             avg_wei,
-            ShapeStyle::from(&BLUE)
+            ShapeStyle::from(&BLUE),
         );
 
         let mut chart = LineChartBuilder::new();
         chart
             .add_data(ordinary_chart_data)
             .add_data(weighted_chart_data)
-            .set_path(PathBuf::from("output/chapter5/blackJack_values_off_policy.png"))
-            .set_title(format!("off policy blackjack mean squared error, averaged over {} runs", num_of_runs));
+            .set_path(PathBuf::from(
+                "output/chapter5/blackJack_values_off_policy.png",
+            ))
+            .set_title(format!(
+                "off policy blackjack mean squared error, averaged over {} runs",
+                num_of_runs
+            ));
 
         chart.create_chart().unwrap();
     }
