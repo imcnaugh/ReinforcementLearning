@@ -586,25 +586,30 @@ mod tests {
 
     #[test]
     fn off_policy_general_policy_iteration_for_blackjack() {
-        let number_of_episodes = 10000;
+        let number_of_episodes = 10;
         let player_count_starting_range = 11..=21;
         let dealer_showing_starting_range = 2..=11;
 
         let card_provider: RandomCardProvider = RandomCardProvider::new();
-        let state_action_values: HashMap<String, f64> = HashMap::new();
-        let state_action_weights: HashMap<String, f64> = HashMap::new();
+        let mut state_action_values: HashMap<String, f64> = HashMap::new();
+        let mut state_action_weights: HashMap<String, f64> = HashMap::new();
         let mut target_policy = DeterministicPolicy::new();
 
         let mut behavior_policy = StochasticPolicy::new();
         (2..=11).for_each(|dealer_showing| {
             vec![true, false].iter().for_each(|usable_ace| {
-                (11..=21).for_each(|player_count| {
+                (2..=32).for_each(|player_count| {
                     let state_id = get_state_id(&player_count, &dealer_showing, &usable_ace);
-                    let state_action_pairs =
-                        vec![(0.5, String::from("hit")), (0.5, String::from("stay"))];
+                    let state_action_pairs = if player_count <= 21 {
+                        vec![(0.5, String::from("hit")), (0.5, String::from("stay"))]
+                    } else {
+                        vec![(1.0, String::from("stay"))]
+                    };
+
                     behavior_policy
                         .set_state_action_probabilities(&state_id, state_action_pairs)
                         .unwrap();
+                    target_policy.set_action_for_state(&state_id, "stay");
                 })
             })
         });
@@ -643,7 +648,7 @@ mod tests {
             }
             let reward = blackjack_state.check_for_win();
 
-            let mut g = 0.0;
+            let g = 0.0;
             let mut w = 1.0;
 
             blackjack_state
@@ -658,17 +663,88 @@ mod tests {
                         usable_ace,
                     );
                     let current_cumulative_weight = match state_action_weights.get(&state_id) {
-                        None => 0.0,
-                        Some(cumulative_weight) => *cumulative_weight,
+                        None => None,
+                        Some(cumulative_weight) => Some(*cumulative_weight),
                     };
 
-                    let steps = blackjack_state.get_previous_counts()[t..].to_vec();
+
+                    let last_t_plus_one_counts: Vec<_> = blackjack_state
+                        .get_previous_counts()
+                        .iter()
+                        .rev()
+                        .take(t + 1)
+                        .enumerate()
+                        .map(|(index, (a, b))| {
+                            let state_id = get_state_id(a, &blackjack_state.get_dealer_showing(), b);
+                            match index {
+                                0 => (state_id.clone(), "stay".to_string()),
+                                _ => (state_id.clone(), "hit".to_string()),
+                            }
+                        })
+                        .collect();
+
+                    let last_t_plus_one = &last_t_plus_one_counts[0];
+                    let current_average = state_action_values.get(&last_t_plus_one.0).unwrap_or(&0.0);
+                    let current_weighted_sum = state_action_weights.get(&last_t_plus_one.0).unwrap_or(&0.0);
+
 
                     let (new_average, new_cumulative_sum) =
-                        weighted_importance_sampling_incremental();
+                        weighted_importance_sampling_incremental(
+                            &last_t_plus_one_counts,
+                            reward,
+                            *current_average,
+                            current_cumulative_weight,
+                            &target_policy,
+                            &behavior_policy
+                        ).unwrap();
 
-                    let current_cumulative_weight = current_cumulative_weight + w;
+                    let state_action_id = format!("{}_{}", last_t_plus_one.0, last_t_plus_one.1);
+                    state_action_values.insert(state_action_id.clone(), new_average);
+                    state_action_weights.insert(state_action_id.clone(), new_cumulative_sum.unwrap());
+
+                    let stay_value = match state_action_values.get(format!("{}_stay", state_action_id).as_str()) {
+                        Some(value) => *value,
+                        None => f64::MIN,
+                    };
+                    let hit_value = match state_action_values.get(format!("{}_hit", state_action_id).as_str()) {
+                        Some(value) => *value,
+                        None => f64::MIN,
+                    };
+
+                    let best_action = if stay_value > hit_value {
+                        "stay"
+                    } else {
+                        "hit"
+                    };
+                    target_policy.set_action_for_state(&state_id, best_action);
+                    // Break loop if best action is not the one taken
+
+                    let action_taken = match t {
+                        0 => "stay",
+                        _ => "hit",
+                    };
+
+                    if action_taken != best_action {
+                        return;
+                    }
+
+                    let actions_for_state = target_policy.get_actions_for_state(&state_id).unwrap();
+                    let odds_of_action_taken = actions_for_state.iter().find(|a| a.1 == action_taken).unwrap().0;
+
+                    w *= 1.0 / odds_of_action_taken;
                 })
+        });
+
+        (11..=21).for_each(|player_count| {
+            let mut s = String::new();
+            (2..11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &true);
+                let action = target_policy.get_actions_for_state(state_id.as_str()).unwrap();
+                action.iter().for_each(|a| {
+                    s.push_str(&format!("{} ", a.1));
+                });
+            });
+            println!("{}", s);
         });
     }
 }
