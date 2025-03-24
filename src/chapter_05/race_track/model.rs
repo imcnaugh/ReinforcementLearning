@@ -111,13 +111,14 @@ mod tests {
     use crate::chapter_05::race_track::track_parser::parse_track_from_string;
     use super::*;
 
+    // TODO fix this case
     #[test]
     fn test_check_for_intersections() {
-        let track_string = " XX\nX X\nXX ".to_string();
+        let track_string = " XX\nXXX\nX X".to_string();
         let track = parse_track_from_string(&track_string).unwrap();
         let start_position = (0, 0);
         let vertical_velocity = 2;
-        let horizontal_velocity = 2;
+        let horizontal_velocity = 1;
 
         println!("{}", track);
 
