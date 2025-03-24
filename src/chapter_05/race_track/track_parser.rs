@@ -39,6 +39,18 @@ pub fn parse_track_from_file(path: &Path) -> Result<RaceTrack, TrackParseError> 
         lines.push(line);
     }
 
+    parse_track_from_lines(&lines)
+}
+
+pub fn parse_track_from_string(track_string: &str) -> Result<RaceTrack, TrackParseError> {
+    let lines = track_string
+        .lines()
+        .map(|l| l.to_string())
+        .collect::<Vec<String>>();
+    parse_track_from_lines(&lines)
+}
+
+fn parse_track_from_lines(lines: &Vec<String>) -> Result<RaceTrack, TrackParseError> {
     let track = lines
         .iter()
         .map(|l| parse_line(l))
@@ -84,11 +96,9 @@ mod tests {
 
         match output {
             Ok(_) => panic!("Expected error"),
-            Err(e) => {
-                match e {
-                    UnexpectedCharacter(c) => assert_eq!(c, 'N'),
-                    _ => panic!("Expected error of type UnexpectedCharacter, got: {}", e),
-                }
+            Err(e) => match e {
+                UnexpectedCharacter(c) => assert_eq!(c, 'N'),
+                _ => panic!("Expected error of type UnexpectedCharacter, got: {}", e),
             },
         }
     }

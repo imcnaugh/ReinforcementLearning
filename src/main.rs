@@ -1,5 +1,5 @@
-use std::path::Path;
 use eframe::egui;
+use std::path::Path;
 use ReinforcementLearning::chapter_05::race_track::model::RaceTrack;
 use ReinforcementLearning::chapter_05::race_track::track_parser::parse_track_from_file;
 
@@ -8,26 +8,28 @@ fn main() {
         ..Default::default()
     };
 
-
     let path = Path::new("resources/tracks/simple_racetrack.txt");
     let track = parse_track_from_file(path).unwrap();
 
-    eframe::run_native("My egui App", options, Box::new(|_cc| {
-        let mut app = MyApp::new();
-        app.set_track(track);
-        Ok(Box::new(app))
-    }));
+    eframe::run_native(
+        "My egui App",
+        options,
+        Box::new(|_cc| {
+            let mut app = MyApp::new();
+            app.set_track(track);
+            Ok(Box::new(app))
+        }),
+    )
+    .unwrap();
 }
 
-struct MyApp{
-    track: Option<RaceTrack>
+struct MyApp {
+    track: Option<RaceTrack>,
 }
 
 impl MyApp {
     pub fn new() -> Self {
-        Self {
-            track: None
-        }
+        Self { track: None }
     }
 
     pub fn set_track(&mut self, track: RaceTrack) {

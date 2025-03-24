@@ -35,6 +35,56 @@ impl RaceTrack {
             finish_positions,
         }
     }
+
+    fn check_for_intersections(
+        &self,
+        start_position: (usize, usize),
+        vertical_velocity: i32,
+        horizontal_velocity: i32,
+    ) -> Option<TrackElement> {
+        if horizontal_velocity == 0 {
+            for i in 0..vertical_velocity.abs() as usize {
+                let y = start_position.1 as i32 + (i as i32 * vertical_velocity.signum());
+                let x = start_position.0 as i32;
+                if y < 0 || y as usize >= self.track.len() {
+                    return Some(TrackElement::OutOfBounds);
+                }
+                match self.track[y as usize][x as usize] {
+                    TrackElement::OutOfBounds => {
+                        return Some(TrackElement::OutOfBounds);
+                    }
+                    TrackElement::Finish => {
+                        return Some(TrackElement::Finish);
+                    }
+                    _ => (),
+                };
+            }
+            return None;
+        }
+
+        let slope = vertical_velocity as f32 / horizontal_velocity as f32;
+        for i in 0..=horizontal_velocity.abs() as usize {
+            let x = start_position.0 as i32 + (i as i32 * horizontal_velocity.signum());
+            let y = (slope * (i as i32 * vertical_velocity.signum()) as f32) as i32 + start_position.1 as i32;
+            if x < 0 || x as usize >= self.track[0].len() {
+                return Some(TrackElement::OutOfBounds);
+            }
+
+            if y < 0 || y as usize >= self.track.len() {
+                return Some(TrackElement::OutOfBounds);
+            }
+            match self.track[y as usize][x as usize] {
+                TrackElement::OutOfBounds => {
+                    return Some(TrackElement::OutOfBounds);
+                },
+                TrackElement::Finish => {
+                    return Some(TrackElement::Finish);
+                },
+                _ => (),
+            };
+        }
+        None
+    }
 }
 
 impl Display for RaceTrack {
@@ -53,5 +103,49 @@ impl Display for RaceTrack {
             str.push('\n');
         });
         write!(f, "{}", str)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::chapter_05::race_track::track_parser::parse_track_from_string;
+    use super::*;
+
+    #[test]
+    fn test_check_for_intersections() {
+        let track_string = " XX\nX X\nXX ".to_string();
+        let track = parse_track_from_string(&track_string).unwrap();
+        let start_position = (0, 0);
+        let vertical_velocity = 2;
+        let horizontal_velocity = 2;
+
+        println!("{}", track);
+
+        let output = track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
+
+        match output {
+            None => assert!(true),
+            Some(track_element) => panic!("Expected no intersection but found {:?}", track_element),
+        }
+    }
+
+    #[test]
+    fn test_check_for_intersections_no_horizontal_velocity() {
+        let track_string = "\
+        X X\n\
+        X X".to_string();
+        let track = parse_track_from_string(&track_string).unwrap();
+        let start_position = (1, 0);
+        let vertical_velocity = 2;
+        let horizontal_velocity = 0;
+
+        let output = track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
+
+        println!("{}", track);
+
+        match output {
+            None => assert!(true),
+            Some(element) => panic!("Expected no intersection but found {:?}", element),
+        }
     }
 }
