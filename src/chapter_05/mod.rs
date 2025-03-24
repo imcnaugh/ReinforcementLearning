@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn off_policy_general_policy_iteration_for_blackjack() {
-        let number_of_episodes = 10;
+        let number_of_episodes = 1000000;
         let player_count_starting_range = 11..=21;
         let dealer_showing_starting_range = 2..=11;
 
@@ -651,12 +651,11 @@ mod tests {
             let g = 0.0;
             let mut w = 1.0;
 
-            blackjack_state
+            for (t, (player_count, usable_ace)) in blackjack_state
                 .get_previous_counts()
                 .iter()
                 .rev()
-                .enumerate()
-                .for_each(|(t, (player_count, usable_ace))| {
+                .enumerate() {
                     let state_id = get_state_id(
                         player_count,
                         &blackjack_state.get_dealer_showing(),
@@ -725,26 +724,53 @@ mod tests {
                     };
 
                     if action_taken != best_action {
-                        return;
+                        break;
                     }
 
                     let actions_for_state = target_policy.get_actions_for_state(&state_id).unwrap();
                     let odds_of_action_taken = actions_for_state.iter().find(|a| a.1 == action_taken).unwrap().0;
 
                     w *= 1.0 / odds_of_action_taken;
-                })
+                }
         });
 
-        (11..=21).for_each(|player_count| {
-            let mut s = String::new();
-            (2..11).for_each(|dealer_showing| {
+        let hit_string = String::from("hit");
+        let stay_string = String::from("stay");
+
+        println!("usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &true);
                 let action = target_policy.get_actions_for_state(state_id.as_str()).unwrap();
-                action.iter().for_each(|a| {
-                    s.push_str(&format!("{} ", a.1));
-                });
+
+                let max_action = action
+                    .iter()
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                    .unwrap();
+
+                let char = if max_action.1 == hit_string { 'H' } else { 'S' };
+                str.push_str(&format!("{} ", char));
             });
-            println!("{}", s);
+            println!("{}", str);
+        });
+
+        println!("no usable ace");
+        (12..=21).rev().for_each(|player_count| {
+            let mut str = format!("player sum: {} | ", player_count);
+            (2..=11).for_each(|dealer_showing| {
+                let state_id = get_state_id(&player_count, &dealer_showing, &false);
+                let action = target_policy.get_actions_for_state(state_id.as_str()).unwrap();
+
+                let max_action = action
+                    .iter()
+                    .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap())
+                    .unwrap();
+
+                let char = if max_action.1 == hit_string { 'H' } else { 'S' };
+                str.push_str(&format!("{} ", char));
+            });
+            println!("{}", str);
         });
     }
 }
