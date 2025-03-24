@@ -648,90 +648,78 @@ mod tests {
             }
             let reward = blackjack_state.check_for_win();
 
-            let g = 0.0;
+            let g = reward;
             let mut w = 1.0;
 
             for (t, (player_count, usable_ace)) in blackjack_state
                 .get_previous_counts()
                 .iter()
                 .rev()
-                .enumerate() {
-                    let state_id = get_state_id(
-                        player_count,
-                        &blackjack_state.get_dealer_showing(),
-                        usable_ace,
-                    );
-                    let current_cumulative_weight = match state_action_weights.get(&state_id) {
-                        None => None,
-                        Some(cumulative_weight) => Some(*cumulative_weight),
-                    };
+                .enumerate()
+            {
+                // get the state id
+                let state_id = get_state_id(
+                    player_count,
+                    &blackjack_state.get_dealer_showing(),
+                    usable_ace,
+                );
+                let action = match t {
+                    0 => "stay",
+                    _ => "hit",
+                };
+                let state_action_id = format!("{}_{}", state_id, action);
 
+                // get the current cumulative weight if it exists
+                let current_cumulative_weight = match state_action_weights.get(&state_id) {
+                    None => Some(w),
+                    Some(cumulative_weight) => Some(*cumulative_weight + w),
+                };
+                state_action_weights.insert(state_id.clone(), w);
 
-                    let last_t_plus_one_counts: Vec<_> = blackjack_state
-                        .get_previous_counts()
-                        .iter()
-                        .rev()
-                        .take(t + 1)
-                        .enumerate()
-                        .map(|(index, (a, b))| {
-                            let state_id = get_state_id(a, &blackjack_state.get_dealer_showing(), b);
-                            match index {
-                                0 => (state_id.clone(), "stay".to_string()),
-                                _ => (state_id.clone(), "hit".to_string()),
-                            }
-                        })
-                        .collect();
+                let current_state_action_value = match state_action_values.get(&state_action_id) {
+                    None => 0.0,
+                    Some(value) => *value,
+                };
+                let new_state_action_value = current_state_action_value
+                    + ((w / current_cumulative_weight.unwrap()) * (g - current_state_action_value));
+                state_action_values.insert(state_action_id, new_state_action_value);
 
-                    let last_t_plus_one = &last_t_plus_one_counts[0];
-                    let current_average = state_action_values.get(&last_t_plus_one.0).unwrap_or(&0.0);
-                    let current_weighted_sum = state_action_weights.get(&last_t_plus_one.0).unwrap_or(&0.0);
+                let stay_value = match state_action_values.get(format!("{}_stay", state_id).as_str()) {
+                    Some(value) => *value,
+                    None => f64::MIN,
+                };
+                let hit_value = match state_action_values.get(format!("{}_hit", state_id).as_str())
+                {
+                    Some(value) => *value,
+                    None => f64::MIN,
+                };
 
+                let best_action = if stay_value > hit_value {
+                    "stay"
+                } else {
+                    "hit"
+                };
+                target_policy.set_action_for_state(&state_id, best_action);
+                // Break loop if best action is not the one taken
 
-                    let (new_average, new_cumulative_sum) =
-                        weighted_importance_sampling_incremental(
-                            &last_t_plus_one_counts,
-                            reward,
-                            *current_average,
-                            current_cumulative_weight,
-                            &target_policy,
-                            &behavior_policy
-                        ).unwrap();
+                let action_taken = match t {
+                    0 => "stay",
+                    _ => "hit",
+                };
 
-                    let state_action_id = format!("{}_{}", last_t_plus_one.0, last_t_plus_one.1);
-                    state_action_values.insert(state_action_id.clone(), new_average);
-                    state_action_weights.insert(state_action_id.clone(), new_cumulative_sum.unwrap());
-
-                    let stay_value = match state_action_values.get(format!("{}_stay", state_action_id).as_str()) {
-                        Some(value) => *value,
-                        None => f64::MIN,
-                    };
-                    let hit_value = match state_action_values.get(format!("{}_hit", state_action_id).as_str()) {
-                        Some(value) => *value,
-                        None => f64::MIN,
-                    };
-
-                    let best_action = if stay_value > hit_value {
-                        "stay"
-                    } else {
-                        "hit"
-                    };
-                    target_policy.set_action_for_state(&state_id, best_action);
-                    // Break loop if best action is not the one taken
-
-                    let action_taken = match t {
-                        0 => "stay",
-                        _ => "hit",
-                    };
-
-                    if action_taken != best_action {
-                        break;
-                    }
-
-                    let actions_for_state = target_policy.get_actions_for_state(&state_id).unwrap();
-                    let odds_of_action_taken = actions_for_state.iter().find(|a| a.1 == action_taken).unwrap().0;
-
-                    w *= 1.0 / odds_of_action_taken;
+                if action_taken != best_action {
+                    break;
                 }
+
+                let actions_for_state = target_policy.get_actions_for_state(&state_id).unwrap();
+                let odds_of_action_taken = actions_for_state
+                    .iter()
+                    .find(|a| a.1 == action_taken)
+                    .unwrap()
+                    .0;
+
+                w *= 1.0 / odds_of_action_taken;
+            }
         });
 
         let hit_string = String::from("hit");
@@ -742,7 +730,9 @@ mod tests {
             let mut str = format!("player sum: {} | ", player_count);
             (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &true);
-                let action = target_policy.get_actions_for_state(state_id.as_str()).unwrap();
+                let action = target_policy
+                    .get_actions_for_state(state_id.as_str())
+                    .unwrap();
 
                 let max_action = action
                     .iter()
@@ -760,7 +750,9 @@ mod tests {
             let mut str = format!("player sum: {} | ", player_count);
             (2..=11).for_each(|dealer_showing| {
                 let state_id = get_state_id(&player_count, &dealer_showing, &false);
-                let action = target_policy.get_actions_for_state(state_id.as_str()).unwrap();
+                let action = target_policy
+                    .get_actions_for_state(state_id.as_str())
+                    .unwrap();
 
                 let max_action = action
                     .iter()
