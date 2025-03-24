@@ -586,7 +586,7 @@ mod tests {
 
     #[test]
     fn off_policy_general_policy_iteration_for_blackjack() {
-        let number_of_episodes = 1000000;
+        let number_of_episodes = 10000000;
         let player_count_starting_range = 11..=21;
         let dealer_showing_starting_range = 2..=11;
 
@@ -657,6 +657,9 @@ mod tests {
                 .rev()
                 .enumerate()
             {
+                if *player_count > 21 {
+                    continue;
+                }
                 // get the state id
                 let state_id = get_state_id(
                     player_count,
@@ -670,18 +673,18 @@ mod tests {
                 let state_action_id = format!("{}_{}", state_id, action);
 
                 // get the current cumulative weight if it exists
-                let current_cumulative_weight = match state_action_weights.get(&state_id) {
-                    None => Some(w),
-                    Some(cumulative_weight) => Some(*cumulative_weight + w),
+                let current_cumulative_weight = match state_action_weights.get(&state_action_id) {
+                    None => w,
+                    Some(cumulative_weight) => *cumulative_weight + w,
                 };
-                state_action_weights.insert(state_id.clone(), w);
+                state_action_weights.insert(state_action_id.clone(), w);
 
                 let current_state_action_value = match state_action_values.get(&state_action_id) {
                     None => 0.0,
                     Some(value) => *value,
                 };
                 let new_state_action_value = current_state_action_value
-                    + ((w / current_cumulative_weight.unwrap()) * (g - current_state_action_value));
+                    + ((w / current_cumulative_weight) * (g - current_state_action_value));
                 state_action_values.insert(state_action_id, new_state_action_value);
 
                 let stay_value = match state_action_values.get(format!("{}_stay", state_id).as_str()) {
@@ -700,25 +703,27 @@ mod tests {
                     "hit"
                 };
                 target_policy.set_action_for_state(&state_id, best_action);
+                // Let's test mutating the behavior policy to get closer to the optimal, semi-off-policy learning?
+                behavior_policy.set_state_actions_probabilities_using_e_soft_probabilities(
+                    state_id.as_str(),
+                    vec![String::from("hit"), String::from("stay")],
+                    0.6,
+                    best_action.to_string()
+                ).unwrap();
+
                 // Break loop if best action is not the one taken
-
-                let action_taken = match t {
-                    0 => "stay",
-                    _ => "hit",
-                };
-
-                if action_taken != best_action {
+                if action != best_action {
                     break;
                 }
 
-                let actions_for_state = target_policy.get_actions_for_state(&state_id).unwrap();
+                let actions_for_state = behavior_policy.get_actions_for_state(&state_id).unwrap();
                 let odds_of_action_taken = actions_for_state
                     .iter()
-                    .find(|a| a.1 == action_taken)
+                    .find(|a| a.1 == action)
                     .unwrap()
                     .0;
 
-                w *= 1.0 / odds_of_action_taken;
+                w = w * (1.0 / odds_of_action_taken);
             }
         });
 
@@ -764,5 +769,7 @@ mod tests {
             });
             println!("{}", str);
         });
+
+        println!("dealer showing:  2 3 4 5 6 7 8 9 10A");
     }
 }
