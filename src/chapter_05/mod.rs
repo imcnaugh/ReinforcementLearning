@@ -2,6 +2,7 @@ pub mod blackjack;
 pub mod cards;
 mod importance_sampling;
 pub mod policy;
+pub mod race_track;
 mod state;
 
 #[cfg(test)]
@@ -687,10 +688,11 @@ mod tests {
                     + ((w / current_cumulative_weight) * (g - current_state_action_value));
                 state_action_values.insert(state_action_id, new_state_action_value);
 
-                let stay_value = match state_action_values.get(format!("{}_stay", state_id).as_str()) {
-                    Some(value) => *value,
-                    None => f64::MIN,
-                };
+                let stay_value =
+                    match state_action_values.get(format!("{}_stay", state_id).as_str()) {
+                        Some(value) => *value,
+                        None => f64::MIN,
+                    };
                 let hit_value = match state_action_values.get(format!("{}_hit", state_id).as_str())
                 {
                     Some(value) => *value,
@@ -704,12 +706,14 @@ mod tests {
                 };
                 target_policy.set_action_for_state(&state_id, best_action);
                 // Let's test mutating the behavior policy to get closer to the optimal, semi-off-policy learning?
-                behavior_policy.set_state_actions_probabilities_using_e_soft_probabilities(
-                    state_id.as_str(),
-                    vec![String::from("hit"), String::from("stay")],
-                    0.6,
-                    best_action.to_string()
-                ).unwrap();
+                behavior_policy
+                    .set_state_actions_probabilities_using_e_soft_probabilities(
+                        state_id.as_str(),
+                        vec![String::from("hit"), String::from("stay")],
+                        0.6,
+                        best_action.to_string(),
+                    )
+                    .unwrap();
 
                 // Break loop if best action is not the one taken
                 if action != best_action {
@@ -717,11 +721,8 @@ mod tests {
                 }
 
                 let actions_for_state = behavior_policy.get_actions_for_state(&state_id).unwrap();
-                let odds_of_action_taken = actions_for_state
-                    .iter()
-                    .find(|a| a.1 == action)
-                    .unwrap()
-                    .0;
+                let odds_of_action_taken =
+                    actions_for_state.iter().find(|a| a.1 == action).unwrap().0;
 
                 w = w * (1.0 / odds_of_action_taken);
             }
