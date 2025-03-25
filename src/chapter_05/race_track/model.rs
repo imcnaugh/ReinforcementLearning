@@ -36,7 +36,7 @@ impl RaceTrack {
         }
     }
 
-    fn check_for_intersections(
+    pub fn check_for_intersections(
         &self,
         start_position: (usize, usize),
         vertical_velocity: i32,

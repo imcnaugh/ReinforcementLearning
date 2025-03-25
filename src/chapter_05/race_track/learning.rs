@@ -3,7 +3,6 @@ use crate::chapter_05::race_track::state::State;
 use rand::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
-use std::fmt::format;
 use std::rc::Rc;
 
 pub struct MonteCarloOffPolicyLearner<S: State> {
@@ -117,5 +116,4 @@ impl<S: State> MonteCarloOffPolicyLearner<S> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }
