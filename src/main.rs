@@ -59,6 +59,8 @@ impl MyApp {
                     None => self.select_piece_to_move(row, col),
                     Some((_, _, m)) => {
                         self.chess_game.make_move(*m);
+                        self.selected_square = None;
+                        self.possible_moves = Vec::new();
                         self.game_state = self.chess_game.get_game_state();
                     },
                 }
