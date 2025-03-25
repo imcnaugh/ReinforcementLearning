@@ -66,16 +66,17 @@ impl RaceTrack {
         let mut previous_y = start_position.1 as i32;
         for i in 0..=horizontal_velocity.abs() as usize {
             let x = start_position.0 as i32 + (i as i32 * horizontal_velocity.signum());
-            let y = (slope * (i as i32 * vertical_velocity.signum()) as f32) as i32 + start_position.1 as i32;
+            let y = (slope * (i as i32 * vertical_velocity.signum()) as f32) as i32
+                + start_position.1 as i32;
 
-            for y in previous_y+1..y {
+            for y in previous_y + 1..y {
                 match self.track[y as usize][x as usize] {
                     TrackElement::OutOfBounds => {
                         return Some(TrackElement::OutOfBounds);
-                    },
+                    }
                     TrackElement::Finish => {
                         return Some(TrackElement::Finish);
-                    },
+                    }
                     _ => (),
                 };
             }
@@ -90,10 +91,10 @@ impl RaceTrack {
             match self.track[y as usize][x as usize] {
                 TrackElement::OutOfBounds => {
                     return Some(TrackElement::OutOfBounds);
-                },
+                }
                 TrackElement::Finish => {
                     return Some(TrackElement::Finish);
-                },
+                }
                 _ => (),
             };
             previous_y = y;
@@ -123,8 +124,8 @@ impl Display for RaceTrack {
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_05::race_track::track_parser::parse_track_from_string;
     use super::*;
+    use crate::chapter_05::race_track::track_parser::parse_track_from_string;
 
     #[test]
     fn test_check_for_intersections() {
@@ -136,7 +137,8 @@ mod tests {
 
         println!("{}", track);
 
-        let output = track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
+        let output =
+            track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
 
         match output {
             None => assert!(true),
@@ -148,19 +150,41 @@ mod tests {
     fn test_check_for_intersections_no_horizontal_velocity() {
         let track_string = "\
         X X\n\
-        X X".to_string();
+        X X"
+        .to_string();
         let track = parse_track_from_string(&track_string).unwrap();
         let start_position = (1, 0);
         let vertical_velocity = 2;
         let horizontal_velocity = 0;
 
-        let output = track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
+        let output =
+            track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
 
         println!("{}", track);
 
         match output {
             None => assert!(true),
             Some(element) => panic!("Expected no intersection but found {:?}", element),
+        }
+    }
+
+    #[test]
+    fn crosses_the_finish_line() {
+        let track_string = "S F".to_string();
+        let track = parse_track_from_string(&track_string).unwrap();
+        let start_position = (0, 0);
+        let vertical_velocity = 0;
+        let horizontal_velocity = 6;
+
+        let output =
+            track.check_for_intersections(start_position, vertical_velocity, horizontal_velocity);
+
+        match output {
+            None => assert!(true),
+            Some(element) => match element {
+                TrackElement::Finish => assert!(true),
+                _ => panic!("Expected finish but found {:?}", element),
+            },
         }
     }
 }
