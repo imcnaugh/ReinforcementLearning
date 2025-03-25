@@ -63,9 +63,23 @@ impl RaceTrack {
         }
 
         let slope = vertical_velocity as f32 / horizontal_velocity as f32;
+        let mut previous_y = start_position.1 as i32;
         for i in 0..=horizontal_velocity.abs() as usize {
             let x = start_position.0 as i32 + (i as i32 * horizontal_velocity.signum());
             let y = (slope * (i as i32 * vertical_velocity.signum()) as f32) as i32 + start_position.1 as i32;
+
+            for y in previous_y+1..y {
+                match self.track[y as usize][x as usize] {
+                    TrackElement::OutOfBounds => {
+                        return Some(TrackElement::OutOfBounds);
+                    },
+                    TrackElement::Finish => {
+                        return Some(TrackElement::Finish);
+                    },
+                    _ => (),
+                };
+            }
+
             if x < 0 || x as usize >= self.track[0].len() {
                 return Some(TrackElement::OutOfBounds);
             }
@@ -82,6 +96,7 @@ impl RaceTrack {
                 },
                 _ => (),
             };
+            previous_y = y;
         }
         None
     }
@@ -111,10 +126,9 @@ mod tests {
     use crate::chapter_05::race_track::track_parser::parse_track_from_string;
     use super::*;
 
-    // TODO fix this case
     #[test]
     fn test_check_for_intersections() {
-        let track_string = " XX\nXXX\nX X".to_string();
+        let track_string = " XX\nX X\nX X".to_string();
         let track = parse_track_from_string(&track_string).unwrap();
         let start_position = (0, 0);
         let vertical_velocity = 2;
