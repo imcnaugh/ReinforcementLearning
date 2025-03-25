@@ -44,8 +44,10 @@ impl<S: State> MonteCarloOffPolicyLearner<S> {
             let episode = self.generate_episode();
             let mut g: f64 = 0.0;
             let mut w: f64 = 1.0;
-            for (state_id, action, reward) in episode[..episode.len() - 1].iter().rev() {
-                g = (self.discount_rate * g) + reward;
+            for (index, (state_id, action, _)) in
+                episode[..episode.len() - 1].iter().enumerate().rev()
+            {
+                g = (self.discount_rate * g) + episode[index + 1].2;
                 let state_action_id = format!("{}_{}", state_id, action);
                 let new_state_action_cumulative_weight =
                     match self.state_action_cumulative_rewards.get(&state_action_id) {
@@ -84,6 +86,8 @@ impl<S: State> MonteCarloOffPolicyLearner<S> {
                             }
                         },
                     );
+                self.target_policy
+                    .set_action_for_state(state_id, &best_action);
 
                 if best_action != *action {
                     break;

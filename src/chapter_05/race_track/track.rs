@@ -36,17 +36,25 @@ impl RaceTrack {
         }
     }
 
+    pub fn get_start_positions(&self) -> &Vec<(usize, usize)> {
+        &self.start_positions
+    }
+
     pub fn check_for_intersections(
         &self,
-        start_position: (usize, usize),
+        start_position: (i32, i32),
         vertical_velocity: i32,
         horizontal_velocity: i32,
     ) -> Option<TrackElement> {
         if horizontal_velocity == 0 {
-            for i in 0..vertical_velocity.abs() as usize {
-                let y = start_position.1 as i32 + (i as i32 * vertical_velocity.signum());
-                let x = start_position.0 as i32;
-                if y < 0 || y as usize >= self.track.len() {
+            for i in 0..=vertical_velocity.abs() {
+                let y = start_position.1 + (i * vertical_velocity.signum());
+                let x = start_position.0;
+
+                if y < 0 || y >= self.track.len() as i32 {
+                    return Some(TrackElement::OutOfBounds);
+                }
+                if x < 0 || x as usize >= self.track[0].len() {
                     return Some(TrackElement::OutOfBounds);
                 }
                 match self.track[y as usize][x as usize] {
@@ -63,11 +71,18 @@ impl RaceTrack {
         }
 
         let slope = vertical_velocity as f32 / horizontal_velocity as f32;
-        let mut previous_y = start_position.1 as i32;
-        for i in 0..=horizontal_velocity.abs() as usize {
-            let x = start_position.0 as i32 + (i as i32 * horizontal_velocity.signum());
-            let y = (slope * (i as i32 * vertical_velocity.signum()) as f32) as i32
-                + start_position.1 as i32;
+        let mut previous_y = start_position.1;
+        for i in 0..=horizontal_velocity.abs() {
+            let x = start_position.0 + (i * horizontal_velocity.signum());
+            let y = (slope * (i * vertical_velocity.signum()) as f32) as i32 + start_position.1;
+
+            if x < 0 || x as usize >= self.track[0].len() {
+                return Some(TrackElement::OutOfBounds);
+            }
+
+            if y < 0 || y as usize >= self.track.len() {
+                return Some(TrackElement::OutOfBounds);
+            }
 
             for y in previous_y + 1..y {
                 match self.track[y as usize][x as usize] {
@@ -81,13 +96,6 @@ impl RaceTrack {
                 };
             }
 
-            if x < 0 || x as usize >= self.track[0].len() {
-                return Some(TrackElement::OutOfBounds);
-            }
-
-            if y < 0 || y as usize >= self.track.len() {
-                return Some(TrackElement::OutOfBounds);
-            }
             match self.track[y as usize][x as usize] {
                 TrackElement::OutOfBounds => {
                     return Some(TrackElement::OutOfBounds);

@@ -1,5 +1,5 @@
-use crate::chapter_05::race_track::model::TrackElement::{Finish, OutOfBounds, Start, Track};
-use crate::chapter_05::race_track::model::{RaceTrack, TrackElement};
+use crate::chapter_05::race_track::track::TrackElement::{Finish, OutOfBounds, Start, Track};
+use crate::chapter_05::race_track::track::{RaceTrack, TrackElement};
 use crate::chapter_05::race_track::track_parser::TrackParseError::{
     FileError, UnexpectedCharacter,
 };
@@ -53,6 +53,7 @@ pub fn parse_track_from_string(track_string: &str) -> Result<RaceTrack, TrackPar
 fn parse_track_from_lines(lines: &Vec<String>) -> Result<RaceTrack, TrackParseError> {
     let track = lines
         .iter()
+        .rev()
         .map(|l| parse_line(l))
         .collect::<Result<Vec<Vec<TrackElement>>, TrackParseError>>()?;
     Ok(RaceTrack::new(track))

@@ -1,9 +1,9 @@
-use crate::chapter_05::race_track::model::{RaceTrack, TrackElement};
 use crate::chapter_05::race_track::state::State;
+use crate::chapter_05::race_track::track::{RaceTrack, TrackElement};
 
 #[derive(Clone)]
 pub struct Racer<'a> {
-    position: (usize, usize),
+    position: (i32, i32),
     velocity: (i32, i32),
     max_velocity: i32,
     crossed_finish_line: bool,
@@ -11,7 +11,7 @@ pub struct Racer<'a> {
 }
 
 impl<'a> Racer<'_> {
-    pub fn new(starting_position: (usize, usize), track: &'a RaceTrack) -> Racer {
+    pub fn new(starting_position: (i32, i32), track: &'a RaceTrack) -> Racer {
         Racer {
             position: starting_position,
             track,
@@ -25,7 +25,7 @@ impl<'a> Racer<'_> {
         self.velocity
     }
 
-    pub fn get_position(&self) -> (usize, usize) {
+    pub fn get_position(&self) -> (i32, i32) {
         self.position
     }
 
@@ -34,7 +34,7 @@ impl<'a> Racer<'_> {
     }
 
     pub fn decrease_horizontal_velocity(&mut self) {
-        self.velocity.0 = -self.max_velocity.max(self.velocity.0 - 1);
+        self.velocity.0 = (self.max_velocity * -1).max(self.velocity.0 - 1);
     }
 
     pub fn increase_vertical_velocity(&mut self) {
@@ -42,7 +42,7 @@ impl<'a> Racer<'_> {
     }
 
     pub fn decrease_vertical_velocity(&mut self) {
-        self.velocity.1 = -self.max_velocity.max(self.velocity.1 - 1);
+        self.velocity.1 = (self.max_velocity * -1).max(self.velocity.1 - 1);
     }
 }
 
@@ -116,7 +116,10 @@ impl State for Racer<'_> {
         ) {
             None => -1.0_f64,
             Some(element) => match element {
-                TrackElement::OutOfBounds => -1000.0_f64,
+                TrackElement::OutOfBounds => {
+                    new_state.crossed_finish_line = true;
+                    -1000.0_f64
+                }
                 TrackElement::Finish => {
                     new_state.crossed_finish_line = true;
                     -1.0_f64
@@ -125,8 +128,8 @@ impl State for Racer<'_> {
             },
         };
 
-        new_state.position.0 += new_state.velocity.0 as usize;
-        new_state.position.1 += new_state.velocity.1 as usize;
+        new_state.position.0 += new_state.velocity.0;
+        new_state.position.1 += new_state.velocity.1;
 
         (reward, new_state)
     }

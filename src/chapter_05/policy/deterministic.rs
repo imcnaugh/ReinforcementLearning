@@ -1,6 +1,7 @@
 use crate::chapter_05::policy::Policy;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct DeterministicPolicy {
     state_action_map: HashMap<String, String>,
 }
