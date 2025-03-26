@@ -3,7 +3,7 @@ pub mod cards;
 mod importance_sampling;
 pub mod policy;
 pub mod race_track;
-mod state;
+pub mod state;
 
 #[cfg(test)]
 mod tests {
