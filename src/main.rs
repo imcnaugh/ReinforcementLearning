@@ -2,6 +2,7 @@ use eframe::egui;
 use egui::Ui;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::{ChessGame, ChessMoveType};
+use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -24,6 +25,7 @@ struct MyApp {
     selected_square: Option<(usize, usize)>,
     game_state: GameState,
     possible_moves: Vec<(usize, usize, ChessMoveType)>,
+    previous_moves: Vec<ChessMoveType>,
 }
 
 impl MyApp {
@@ -36,6 +38,7 @@ impl MyApp {
             game_state: state,
             selected_square: None,
             possible_moves: Vec::new(),
+            previous_moves: Vec::new(),
         }
     }
 
@@ -46,12 +49,17 @@ impl MyApp {
     }
 
     fn square_selected(&mut self, row: usize, col: usize) {
-        let square_id = game_board::get_square_name_from_row_and_col(col, row);
         match self.selected_square {
             None => {
                 self.select_piece_to_move(row, col);
             }
-            Some(_) => {
+            Some((selected_row, selected_col)) => {
+                if selected_row == row && selected_col == col {
+                    self.selected_square = None;
+                    self.possible_moves = Vec::new();
+                    return;
+                }
+
                 let complete_move = self
                     .possible_moves
                     .iter()
@@ -60,6 +68,7 @@ impl MyApp {
                 match complete_move {
                     None => self.select_piece_to_move(row, col),
                     Some((_, _, m)) => {
+                        self.previous_moves.push(m.clone());
                         self.chess_game.make_move(*m);
                         self.selected_square = None;
                         self.possible_moves = Vec::new();
@@ -142,9 +151,9 @@ impl MyApp {
                         (0..self.chess_game.get_board().get_width()).for_each(|x| {
                             let piece = self.chess_game.get_board().get_piece_at_space(x, y);
                             let square_color = if (x + y) % 2 == 0 {
-                                egui::Color32::from_rgb(181, 181, 181)
-                            } else {
                                 egui::Color32::from_rgb(138, 144, 145)
+                            } else {
+                                egui::Color32::from_rgb(181, 181, 181)
                             };
                             let piece_as_char = match piece {
                                 None => " ",
@@ -200,12 +209,69 @@ impl MyApp {
             });
         });
     }
+
+    fn reset_game_button(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            if ui.button("New Game").clicked() {
+                self.chess_game = ChessGame::new();
+                self.game_state = self.chess_game.get_game_state();
+                self.selected_square = None;
+                self.possible_moves = Vec::new();
+                self.previous_moves = Vec::new();
+            };
+        });
+    }
+
+    fn previous_moves(&mut self, ui: &mut Ui) {
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.vertical(|ui| {
+                self.previous_moves.chunks(2).enumerate().for_each(|(turn_number, m)| {
+                    ui.horizontal(|ui| {
+                        ui.label(format!("{}.", turn_number + 1));
+                        m.iter().for_each(|c| {
+                            let text = encode_move_as_long_algebraic_notation(c);
+                            ui.label(text);
+                            ui.add_space(10.0);
+                        });
+                    });
+                });
+            });
+        });
+    }
+
+    fn game_status_label(&mut self, ui: &mut Ui) {
+        let current_game_state = match &self.game_state {
+            GameState::InProgress { turn, .. } => {
+                format!("Turn: {:?}", turn)
+            }
+            GameState::Check { turn, .. } => {
+                format!("Check! Turn: {:?}", turn)
+            }
+            GameState::Checkmate { winner } => {
+                format!("Checkmate! Winner: {:?}", winner)
+            }
+            GameState::Stalemate => {
+                String::from("Stalemate")
+            }
+        };
+        ui.label(current_game_state);
+    }
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.draw_chess_board(ui);
+            ui.horizontal(|ui| {
+                self.draw_chess_board(ui);
+                ui.add_space(10.0);
+                ui.vertical(|ui| {
+                    self.game_status_label(ui);
+                    ui.add_space(10.0);
+                    self.reset_game_button(ui);
+                    ui.add_space(10.0);
+                    self.previous_moves(ui);
+                });
+            });
         });
     }
 }
