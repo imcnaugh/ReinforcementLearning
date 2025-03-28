@@ -2,9 +2,7 @@ use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 pub trait Policy {
-    fn select_action_for_state(&self, state_id: &str) -> Result<&str, Box<PolicyError>>;
-
-    fn get_all_actions_for_state(&self, state_id: &str) -> Result<&Vec<String>, Box<PolicyError>>;
+    fn select_action_for_state(&self, state_id: &str) -> Result<String, Box<PolicyError>>;
 }
 
 pub struct PolicyError {

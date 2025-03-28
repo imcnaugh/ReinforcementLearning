@@ -18,23 +18,13 @@ impl DeterministicPolicy {
 }
 
 impl Policy for DeterministicPolicy {
-    fn select_action_for_state(&self, state_id: &str) -> Result<&str, Box<PolicyError>> {
+    fn select_action_for_state(&self, state_id: &str) -> Result<String, Box<PolicyError>> {
         match self.state_action_map.get(state_id) {
             None => Err(Box::new(PolicyError::new(format!(
                 "state id {} not found",
                 state_id
             )))),
-            Some(action) => Ok(action),
-        }
-    }
-
-    fn get_all_actions_for_state(&self, state_id: &str) -> Result<&Vec<String>, Box<PolicyError>> {
-        match self.state_action_map.get(state_id) {
-            None => Err(Box::new(PolicyError::new(format!(
-                "state id {} not found",
-                state_id
-            )))),
-            Some(action) => Ok(&vec![action.to_string()]),
+            Some(action) => Ok(action.clone()),
         }
     }
 }
