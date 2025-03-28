@@ -49,12 +49,13 @@ impl Sarsa {
             while !state.is_terminal() {
                 let state_action_id = format!("{}_{}", state.get_id(), action);
 
+                let current_state_action_value =
+                    *self.get_state_action_value_or_default(&state_action_id);
+
                 let (reward, next_state) = state.take_action(&action);
 
-                let current_state_action_value =
-                    self.get_state_action_value_or_default(&state_action_id);
-
                 let next_state_action = self.get_action_for_state(&next_state);
+
                 let next_state_action_id = format!("{}_{}", next_state.get_id(), next_state_action);
 
                 let new_state_action_value = current_state_action_value
@@ -67,15 +68,42 @@ impl Sarsa {
                 self.action_values
                     .insert(state_action_id, new_state_action_value);
 
+                let possible_actions = &state.get_actions();
+                let mut best_action = possible_actions[0].clone();
+                let mut best_action_value = *self.get_state_action_value_or_default(&format!(
+                    "{}_{}",
+                    state.get_id(),
+                    best_action
+                ));
+                (1..possible_actions.len()).for_each(|i| {
+                    let action_value = self.get_state_action_value_or_default(&format!(
+                        "{}_{}",
+                        state.get_id(),
+                        possible_actions[i]
+                    ));
+                    if action_value > &best_action_value {
+                        best_action = possible_actions[i].clone();
+                        best_action_value = *action_value;
+                    }
+                });
+
+                if best_action_value != self.default_state_action_value {
+                    self.policy.set_actions_for_state(
+                        state.get_id().clone(),
+                        possible_actions.clone(),
+                        best_action,
+                    );
+                }
+
                 action = next_state_action;
                 state = next_state;
             }
         })
     }
 
-    fn get_state_action_value_or_default(&mut self, state_action_id: &String) -> &f64 {
+    fn get_state_action_value_or_default(&mut self, state_action_id: &str) -> &f64 {
         self.action_values
-            .get(&state_action_id)
+            .get(state_action_id)
             .unwrap_or(&self.default_state_action_value)
     }
 
@@ -86,8 +114,11 @@ impl Sarsa {
                 if state.is_terminal() {
                     String::new()
                 } else {
-                    let actions = state.get_actions();
-                    actions[0].clone()
+                    state
+                        .get_actions()
+                        .choose(&mut rand::rng())
+                        .unwrap()
+                        .clone()
                 }
             }
         }

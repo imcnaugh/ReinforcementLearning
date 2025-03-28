@@ -1,5 +1,6 @@
 pub mod blackjack_test_state;
 pub mod one_step_temporal_difference;
+mod windy_gridworld;
 
 #[cfg(test)]
 mod tests {
@@ -14,7 +15,7 @@ mod tests {
     fn example_6_2_markov_reward_process() {
         let mut rng = rand::rng();
         let discount_rate = 1.0;
-        let size_step_parameter = 0.1;
+        let size_step_parameter = 0.5;
         let number_of_episodes = 100;
         let mut state_values: HashMap<String, f64> = HashMap::new();
 
