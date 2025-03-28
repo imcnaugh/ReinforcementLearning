@@ -2,7 +2,6 @@
 ///
 /// defines simple functions that any state should be able to implement.
 pub trait State {
-
     /// returns the id of the state, this needs to be unique to the state
     fn get_id(&self) -> String;
 

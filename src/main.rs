@@ -1,8 +1,8 @@
 use eframe::egui;
 use egui::Ui;
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::{ChessGame, ChessMoveType};
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
+use simple_chess::{ChessGame, ChessMoveType};
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -225,16 +225,19 @@ impl MyApp {
     fn previous_moves(&mut self, ui: &mut Ui) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.vertical(|ui| {
-                self.previous_moves.chunks(2).enumerate().for_each(|(turn_number, m)| {
-                    ui.horizontal(|ui| {
-                        ui.label(format!("{}.", turn_number + 1));
-                        m.iter().for_each(|c| {
-                            let text = encode_move_as_long_algebraic_notation(c);
-                            ui.label(text);
-                            ui.add_space(10.0);
+                self.previous_moves
+                    .chunks(2)
+                    .enumerate()
+                    .for_each(|(turn_number, m)| {
+                        ui.horizontal(|ui| {
+                            ui.label(format!("{}.", turn_number + 1));
+                            m.iter().for_each(|c| {
+                                let text = encode_move_as_long_algebraic_notation(c);
+                                ui.label(text);
+                                ui.add_space(10.0);
+                            });
                         });
                     });
-                });
             });
         });
     }
@@ -250,9 +253,7 @@ impl MyApp {
             GameState::Checkmate { winner } => {
                 format!("Checkmate! Winner: {:?}", winner)
             }
-            GameState::Stalemate => {
-                String::from("Stalemate")
-            }
+            GameState::Stalemate => String::from("Stalemate"),
         };
         ui.label(current_game_state);
     }

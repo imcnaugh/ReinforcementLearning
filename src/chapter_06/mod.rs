@@ -1,17 +1,17 @@
-pub mod one_step_temporal_difference;
 pub mod blackjack_test_state;
+pub mod one_step_temporal_difference;
 
 #[cfg(test)]
-mod tests{
+mod tests {
+    use crate::chapter_05::race_track::state::State;
+    use crate::service::{LineChartBuilder, LineChartData};
+    use plotters::prelude::{ShapeStyle, BLACK, BLUE};
+    use rand::prelude::IndexedRandom;
     use std::collections::HashMap;
     use std::path::PathBuf;
-    use plotters::prelude::{ShapeStyle, BLACK, BLUE};
-    use crate::chapter_05::race_track::state::State;
-    use rand::prelude::IndexedRandom;
-    use crate::service::{LineChartBuilder, LineChartData};
 
     #[test]
-    fn example_6_2_markov_reward_process(){
+    fn example_6_2_markov_reward_process() {
         let mut rng = rand::rng();
         let discount_rate = 1.0;
         let size_step_parameter = 0.1;
@@ -39,15 +39,19 @@ mod tests{
             }
         });
 
-        let data_after_100_episodes = (0..5).map(|i| {
-            let value = state_values.get(&i.to_string()).unwrap();
-            (i as f32, *value as f32)
-        }).collect::<Vec<(f32, f32)>>();
+        let data_after_100_episodes = (0..5)
+            .map(|i| {
+                let value = state_values.get(&i.to_string()).unwrap();
+                (i as f32, *value as f32)
+            })
+            .collect::<Vec<(f32, f32)>>();
 
-        let actual_value = (0..5).map(|i| {
-            let value:f32 = (i as f32 + 1.0) / 6.0;
-            (i as f32, value)
-        }).collect();
+        let actual_value = (0..5)
+            .map(|i| {
+                let value: f32 = (i as f32 + 1.0) / 6.0;
+                (i as f32, value)
+            })
+            .collect();
 
         let data_all_episodes = LineChartData::new(
             format!("after {} episodes", number_of_episodes),
@@ -76,10 +80,7 @@ mod tests{
 
     impl MrpState {
         fn new(id: u8, is_terminal: bool) -> Self {
-            Self {
-                id,
-                is_terminal,
-            }
+            Self { id, is_terminal }
         }
     }
 
@@ -89,7 +90,7 @@ mod tests{
         }
 
         fn get_actions(&self) -> Vec<String> {
-           vec![String::from("l"), String::from("r")]
+            vec![String::from("l"), String::from("r")]
         }
 
         fn is_terminal(&self) -> bool {
@@ -107,7 +108,7 @@ mod tests{
             let new_id = match action {
                 "l" => self.id - 1,
                 "r" => self.id + 1,
-                _ => panic!()
+                _ => panic!(),
             };
             (0.0, MrpState::new(new_id, false))
         }

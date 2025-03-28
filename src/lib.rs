@@ -1,10 +1,10 @@
+pub mod attempts_at_framework;
 mod chapter_02;
 mod chapter_03;
 mod chapter_04;
 pub mod chapter_05;
 pub mod chapter_06;
 pub mod service;
-pub mod attempts_at_framework;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

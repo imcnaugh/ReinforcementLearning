@@ -5,8 +5,6 @@ pub trait Policy {
     fn select_action_for_state(&self, state_id: &str) -> Result<&str, Box<PolicyError>>;
 
     fn get_all_actions_for_state(&self, state_id: &str) -> Result<&Vec<String>, Box<PolicyError>>;
-
-    fn set_actions_for_state(&mut self, state_id: &str, actions: Vec<String>);
 }
 
 pub struct PolicyError {
@@ -15,9 +13,7 @@ pub struct PolicyError {
 
 impl PolicyError {
     pub fn new(message: String) -> Self {
-        Self {
-            message
-        }
+        Self { message }
     }
 }
 

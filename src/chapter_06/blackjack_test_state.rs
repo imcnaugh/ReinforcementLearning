@@ -11,7 +11,7 @@ pub struct BlackJackTestState {
 
 impl BlackJackTestState {
     pub fn new(player_count: u8, dealer_showing: u8, usable_ace: bool, is_terminal: bool) -> Self {
-        let state_value = if is_terminal { 0.0 } else {  0.0  }; // some arbitrary value, distinct from reality
+        let state_value = if is_terminal { 0.0 } else { 0.0 }; // some arbitrary value, distinct from reality
         Self {
             player_count,
             dealer_showing,
@@ -101,7 +101,12 @@ impl State for BlackJackTestState {
                 } else {
                     -1.0
                 };
-                let next_state = BlackJackTestState::new(self.player_count, self.dealer_showing, self.usable_ace, true);
+                let next_state = BlackJackTestState::new(
+                    self.player_count,
+                    self.dealer_showing,
+                    self.usable_ace,
+                    true,
+                );
 
                 (reward, next_state)
             }
