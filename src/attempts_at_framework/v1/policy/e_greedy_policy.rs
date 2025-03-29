@@ -1,5 +1,5 @@
 use crate::attempts_at_framework::v1::policy::policy::{Policy, PolicyError};
-use crate::attempts_at_framework::v1::policy::StochasticPolicy;
+use crate::attempts_at_framework::v1::policy::{DeterministicPolicy, StochasticPolicy};
 
 pub struct EGreedyPolicy {
     policy: StochasticPolicy,
@@ -51,26 +51,8 @@ impl EGreedyPolicy {
             .set_actions_for_state(state_id, actions_and_odds.collect());
     }
 
-    pub fn select_greedy_action_for_state(&self, state_id: &str) -> Result<String, Box<PolicyError>> {
-        match self.policy.get_actions_for_state(state_id) {
-            None => Err(Box::new(PolicyError::new(format!(
-                "no actions for state {}",
-                state_id
-            )))),
-            Some(action_and_odds) => {
-                let best_action = action_and_odds
-                    .iter()
-                    .max_by(|x, y| {
-                        let x_v = x.1;
-                        let y_v = y.1;
-                        x_v.partial_cmp(&y_v).unwrap()
-                    })
-                    .unwrap()
-                    .0
-                    .clone();
-                Ok(best_action)
-            }
-        }
+    pub fn to_deterministic_policy(&self) -> DeterministicPolicy {
+        self.policy.to_deterministic_policy()
     }
 }
 

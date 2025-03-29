@@ -121,15 +121,15 @@ impl State for WindyGridworldState<'_> {
             "NorthEast" => {
                 new_row += 1;
                 new_col += 1;
-            },
+            }
             "NorthWest" => {
                 new_row += 1;
                 new_col -= 1;
-            },
+            }
             "SouthEast" => {
                 new_row -= 1;
                 new_col += 1;
-            },
+            }
             "SouthWest" => {
                 new_row -= 1;
                 new_col -= 1;
@@ -183,6 +183,7 @@ impl State for WindyGridworldState<'_> {
 mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::agent::{QLearning, Sarsa};
+    use crate::attempts_at_framework::v1::policy::Policy;
 
     #[test]
     fn test_windy_gridworld_sarsa() {
@@ -192,13 +193,13 @@ mod tests {
         let mut agent = Sarsa::new(0.1, 0.5, 1.0);
         agent.lear_for_episode_count(1000, vec![starting_point.clone()]);
 
-        let policy = agent.get_policy();
+        let policy = agent.get_policy().to_deterministic_policy();
 
         let mut steps: Vec<String> = Vec::new();
         let mut state = starting_point.clone();
         while !state.is_terminal() {
             let action = policy
-                .select_greedy_action_for_state(&state.get_id())
+                .select_action_for_state(&state.get_id())
                 .unwrap_or("nope".to_string());
             steps.push(action.clone());
             state = state.take_action(&action).1;
@@ -213,15 +214,15 @@ mod tests {
         let starting_point = world.make_state_for_row_col(3, 0);
 
         let mut agent = QLearning::new(0.1, 0.5, 1.0);
-        agent.learn_for_episode_count(1000, vec![starting_point.clone()]);
+        agent.learn_for_episode_count(10000, vec![starting_point.clone()]);
 
-        let policy = agent.get_policy();
+        let policy = agent.get_policy().to_deterministic_policy();
 
         let mut steps: Vec<String> = Vec::new();
         let mut state = starting_point.clone();
         while !state.is_terminal() {
             let action = policy
-                .select_greedy_action_for_state(&state.get_id())
+                .select_action_for_state(&state.get_id())
                 .unwrap_or("nope".to_string());
             steps.push(action.clone());
             state = state.take_action(&action).1;
