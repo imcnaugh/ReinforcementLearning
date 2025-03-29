@@ -51,10 +51,14 @@ impl QLearning {
 
                 let (reward, next_state) = state.take_action(&action);
 
-                let max_next_state_action_value = next_state.get_actions().iter().map(|a| {
-                    let action_id = format!("{}_{}", next_state.get_id(), a);
-                    *self.action_values.get(&action_id).unwrap_or(&self.default_action_value)
-                }).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
+                let max_next_state_action_value = if next_state.is_terminal() {
+                    0.0
+                } else {
+                    next_state.get_actions().iter().map(|a| {
+                        let action_id = format!("{}_{}", next_state.get_id(), a);
+                        *self.action_values.get(&action_id).unwrap_or(&self.default_action_value)
+                    }).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
+                };
                 let current_state_action_value = self.action_values.get(&format!("{}_{}", state.get_id(), action)).unwrap_or(&self.default_action_value);
 
                 let new_state_action_value = current_state_action_value +
@@ -62,12 +66,14 @@ impl QLearning {
 
                 self.action_values.insert(format!("{}_{}", state.get_id(), action), new_state_action_value);
 
-                let best_action = state.get_actions().iter().map(|a| {
-                    let action_id = format!("{}_{}", state.get_id(), a);
-                    (a.clone(), self.action_values.get(&action_id).unwrap_or(&self.default_action_value))
-                }).max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
+                if new_state_action_value != self.default_action_value {
+                    let best_action = state.get_actions().iter().map(|a| {
+                        let action_id = format!("{}_{}", state.get_id(), a);
+                        (a.clone(), self.action_values.get(&action_id).unwrap_or(&self.default_action_value))
+                    }).max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
 
-                self.policy.set_actions_for_state(state.get_id().clone(), state.get_actions().clone(), best_action.clone());
+                    self.policy.set_actions_for_state(state.get_id().clone(), state.get_actions().clone(), best_action.clone());
+                }
 
                 state = next_state;
             }

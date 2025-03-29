@@ -106,7 +106,7 @@ impl State for WindyGridworldState<'_> {
             "West" => new_col -= 1,
             "North" => new_row += 1,
             "South" => new_row -= 1,
-            _ => panic!("invalid action"),
+            _ => panic!("attempted to take invalid action: {} from state {}", action, self.get_id()),
         }
 
         if let Some((str, dir)) = self.wind {
@@ -134,16 +134,40 @@ impl State for WindyGridworldState<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::attempts_at_framework::v1::agent::Sarsa;
+    use crate::attempts_at_framework::v1::agent::{QLearning, Sarsa};
     use crate::attempts_at_framework::v1::policy::Policy;
 
     #[test]
-    fn test_windy_gridworld() {
+    fn test_windy_gridworld_sarsa() {
         let world = WindyGridworld::new(6, 9);
         let starting_point = world.make_state_for_row_col(3, 0);
 
         let mut agent = Sarsa::new(0.1, 0.5, 1.0);
         agent.lear_for_episode_count(200, vec![starting_point.clone()]);
+
+        let policy = agent.get_policy();
+
+        let mut steps: Vec<String> = Vec::new();
+        let mut state = starting_point.clone();
+        while !state.is_terminal() {
+            let action = policy
+                .select_action_for_state(&state.get_id())
+                .unwrap_or("nope".to_string());
+            steps.push(action.clone());
+            state = state.take_action(&action).1;
+        }
+
+        println!("{:?}", steps);
+    }
+
+    #[test]
+    fn test_windy_gridworld_q_learning() {
+
+        let world = WindyGridworld::new(6, 9);
+        let starting_point = world.make_state_for_row_col(3, 0);
+
+        let mut agent = QLearning::new(0.1, 0.5, 1.0);
+        agent.learn_for_episode_count(200, vec![starting_point.clone()]);
 
         let policy = agent.get_policy();
 
