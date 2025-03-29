@@ -1,5 +1,6 @@
 mod chart_service;
 mod util;
+mod chess_state;
 
 pub use chart_service::LineChartBuilder;
 pub use chart_service::LineChartData;

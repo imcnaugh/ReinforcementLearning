@@ -190,8 +190,8 @@ mod tests {
         let world = WindyGridworld::new(6, 9);
         let starting_point = world.make_state_for_row_col(3, 0);
 
-        let mut agent = Sarsa::new(0.1, 0.5, 1.0);
-        agent.lear_for_episode_count(1000, vec![starting_point.clone()]);
+        let mut agent = Sarsa::new(0.1, 0.5, 0.9);
+        agent.lear_for_episode_count(100000, vec![starting_point.clone()]);
 
         let policy = agent.get_policy().to_deterministic_policy();
 
@@ -213,8 +213,8 @@ mod tests {
         let world = WindyGridworld::new(6, 9);
         let starting_point = world.make_state_for_row_col(3, 0);
 
-        let mut agent = QLearning::new(0.1, 0.5, 1.0);
-        agent.learn_for_episode_count(10000, vec![starting_point.clone()]);
+        let mut agent = QLearning::new(0.1, 0.5, 0.9);
+        agent.learn_for_episode_count(100000, vec![starting_point.clone()]);
 
         let policy = agent.get_policy().to_deterministic_policy();
 
