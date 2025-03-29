@@ -20,6 +20,10 @@ impl StochasticPolicy {
     ) {
         self.state_action_odds.insert(state_id, actions_and_odds);
     }
+
+    pub fn get_actions_for_state(&self, state_id: &str) -> Option<&Vec<(String, f64)>> {
+        self.state_action_odds.get(state_id)
+    }
 }
 
 impl Policy for StochasticPolicy {

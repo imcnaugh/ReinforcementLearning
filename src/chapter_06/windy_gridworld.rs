@@ -5,6 +5,10 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Copy)]
 pub enum Direction {
     North,
+    NorthEast,
+    NorthWest,
+    SouthEast,
+    SouthWest,
     East,
     South,
     West,
@@ -17,6 +21,10 @@ impl Display for Direction {
             Direction::East => write!(f, "East"),
             Direction::South => write!(f, "South"),
             Direction::West => write!(f, "West"),
+            Direction::NorthEast => write!(f, "NorthEast"),
+            Direction::NorthWest => write!(f, "NorthWest"),
+            Direction::SouthEast => write!(f, "SouthEast"),
+            Direction::SouthWest => write!(f, "SouthWest"),
         }
     }
 }
@@ -87,6 +95,10 @@ impl State for WindyGridworldState<'_> {
             Direction::East,
             Direction::South,
             Direction::West,
+            Direction::NorthEast,
+            Direction::NorthWest,
+            Direction::SouthEast,
+            Direction::SouthWest,
         ]
         .iter()
         .map(|d| d.to_string())
@@ -106,7 +118,27 @@ impl State for WindyGridworldState<'_> {
             "West" => new_col -= 1,
             "North" => new_row += 1,
             "South" => new_row -= 1,
-            _ => panic!("attempted to take invalid action: {} from state {}", action, self.get_id()),
+            "NorthEast" => {
+                new_row += 1;
+                new_col += 1;
+            },
+            "NorthWest" => {
+                new_row += 1;
+                new_col -= 1;
+            },
+            "SouthEast" => {
+                new_row -= 1;
+                new_col += 1;
+            },
+            "SouthWest" => {
+                new_row -= 1;
+                new_col -= 1;
+            }
+            _ => panic!(
+                "attempted to take invalid action: {} from state {}",
+                action,
+                self.get_id()
+            ),
         }
 
         if let Some((str, dir)) = self.wind {
@@ -115,6 +147,22 @@ impl State for WindyGridworldState<'_> {
                 Direction::East => new_col += str as i16,
                 Direction::South => new_row -= str as i16,
                 Direction::West => new_col -= str as i16,
+                Direction::NorthEast => {
+                    new_row += str as i16;
+                    new_col += str as i16;
+                }
+                Direction::NorthWest => {
+                    new_row += str as i16;
+                    new_col -= str as i16;
+                }
+                Direction::SouthEast => {
+                    new_row -= str as i16;
+                    new_col += str as i16;
+                }
+                Direction::SouthWest => {
+                    new_row -= str as i16;
+                    new_col -= str as i16;
+                }
             }
         }
 
@@ -135,7 +183,6 @@ impl State for WindyGridworldState<'_> {
 mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::agent::{QLearning, Sarsa};
-    use crate::attempts_at_framework::v1::policy::Policy;
 
     #[test]
     fn test_windy_gridworld_sarsa() {
@@ -143,7 +190,7 @@ mod tests {
         let starting_point = world.make_state_for_row_col(3, 0);
 
         let mut agent = Sarsa::new(0.1, 0.5, 1.0);
-        agent.lear_for_episode_count(200, vec![starting_point.clone()]);
+        agent.lear_for_episode_count(1000, vec![starting_point.clone()]);
 
         let policy = agent.get_policy();
 
@@ -151,7 +198,7 @@ mod tests {
         let mut state = starting_point.clone();
         while !state.is_terminal() {
             let action = policy
-                .select_action_for_state(&state.get_id())
+                .select_greedy_action_for_state(&state.get_id())
                 .unwrap_or("nope".to_string());
             steps.push(action.clone());
             state = state.take_action(&action).1;
@@ -162,12 +209,11 @@ mod tests {
 
     #[test]
     fn test_windy_gridworld_q_learning() {
-
         let world = WindyGridworld::new(6, 9);
         let starting_point = world.make_state_for_row_col(3, 0);
 
         let mut agent = QLearning::new(0.1, 0.5, 1.0);
-        agent.learn_for_episode_count(200, vec![starting_point.clone()]);
+        agent.learn_for_episode_count(1000, vec![starting_point.clone()]);
 
         let policy = agent.get_policy();
 
@@ -175,7 +221,7 @@ mod tests {
         let mut state = starting_point.clone();
         while !state.is_terminal() {
             let action = policy
-                .select_action_for_state(&state.get_id())
+                .select_greedy_action_for_state(&state.get_id())
                 .unwrap_or("nope".to_string());
             steps.push(action.clone());
             state = state.take_action(&action).1;

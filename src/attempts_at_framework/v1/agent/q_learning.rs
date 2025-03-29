@@ -1,7 +1,7 @@
-use std::collections::HashMap;
-use rand::prelude::IndexedRandom;
 use crate::attempts_at_framework::v1::policy::{EGreedyPolicy, Policy};
 use crate::attempts_at_framework::v1::state::State;
+use rand::prelude::IndexedRandom;
+use std::collections::HashMap;
 
 pub struct QLearning {
     action_values: HashMap<String, f64>,
@@ -44,9 +44,9 @@ impl QLearning {
             let mut state = starting_states.choose(&mut rng).unwrap().clone();
 
             while !state.is_terminal() {
-                let action = match self.policy.select_action_for_state(&state.get_id()){
+                let action = match self.policy.select_action_for_state(&state.get_id()) {
                     Ok(action) => action,
-                    Err(_) => state.get_actions().choose(&mut rng).unwrap().clone()
+                    Err(_) => state.get_actions().choose(&mut rng).unwrap().clone(),
                 };
 
                 let (reward, next_state) = state.take_action(&action);
@@ -54,25 +54,56 @@ impl QLearning {
                 let max_next_state_action_value = if next_state.is_terminal() {
                     0.0
                 } else {
-                    next_state.get_actions().iter().map(|a| {
-                        let action_id = format!("{}_{}", next_state.get_id(), a);
-                        *self.action_values.get(&action_id).unwrap_or(&self.default_action_value)
-                    }).max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap()
+                    next_state
+                        .get_actions()
+                        .iter()
+                        .map(|a| {
+                            let action_id = format!("{}_{}", next_state.get_id(), a);
+                            *self
+                                .action_values
+                                .get(&action_id)
+                                .unwrap_or(&self.default_action_value)
+                        })
+                        .max_by(|a, b| a.partial_cmp(b).unwrap())
+                        .unwrap()
                 };
-                let current_state_action_value = self.action_values.get(&format!("{}_{}", state.get_id(), action)).unwrap_or(&self.default_action_value);
+                let current_state_action_value = self
+                    .action_values
+                    .get(&format!("{}_{}", state.get_id(), action))
+                    .unwrap_or(&self.default_action_value);
 
-                let new_state_action_value = current_state_action_value +
-                    (self.step_size_parameter * (reward + (self.discount_rate * max_next_state_action_value) - current_state_action_value));
+                let new_state_action_value = current_state_action_value
+                    + (self.step_size_parameter
+                        * (reward + (self.discount_rate * max_next_state_action_value)
+                            - current_state_action_value));
 
-                self.action_values.insert(format!("{}_{}", state.get_id(), action), new_state_action_value);
+                self.action_values.insert(
+                    format!("{}_{}", state.get_id(), action),
+                    new_state_action_value,
+                );
 
                 if new_state_action_value != self.default_action_value {
-                    let best_action = state.get_actions().iter().map(|a| {
-                        let action_id = format!("{}_{}", state.get_id(), a);
-                        (a.clone(), self.action_values.get(&action_id).unwrap_or(&self.default_action_value))
-                    }).max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).unwrap().0;
+                    let best_action = state
+                        .get_actions()
+                        .iter()
+                        .map(|a| {
+                            let action_id = format!("{}_{}", state.get_id(), a);
+                            (
+                                a.clone(),
+                                self.action_values
+                                    .get(&action_id)
+                                    .unwrap_or(&self.default_action_value),
+                            )
+                        })
+                        .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+                        .unwrap()
+                        .0;
 
-                    self.policy.set_actions_for_state(state.get_id().clone(), state.get_actions().clone(), best_action.clone());
+                    self.policy.set_actions_for_state(
+                        state.get_id().clone(),
+                        state.get_actions().clone(),
+                        best_action.clone(),
+                    );
                 }
 
                 state = next_state;
