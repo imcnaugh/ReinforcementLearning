@@ -1,4 +1,3 @@
-use egui::Shape::Vec;
 use simple_chess::chess_game_state_analyzer::GameState;
 use crate::attempts_at_framework::v1::state::State;
 
@@ -7,16 +6,17 @@ pub struct ChessState {
     id: String,
     moves: Vec<String>,
     is_terminal: bool,
+    make_move: fn(String) -> (f64, ChessState)
 }
 
 impl ChessState {
-    pub fn new(game_as_fen_string: String) -> Self {
+    pub fn new(game_as_fen_string: String, make_move: fn(String) -> (f64, ChessState)) -> Self {
         let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&game_as_fen_string).unwrap();
-        let (is_terminal, moves) = match &game.get_game_state() {
+        let (is_terminal, moves) = match game.get_game_state() {
                 GameState::InProgress { legal_moves, .. } => (false, legal_moves),
                 GameState::Check { legal_moves, .. } => (false, legal_moves),
-                GameState::Checkmate { .. } => (true, &vec![]),
-                GameState::Stalemate => (true, &vec![]),
+                GameState::Checkmate { .. } => (true, vec![]),
+                GameState::Stalemate => (true, vec![]),
             };
         let moves = moves.iter().map(|m| simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(m)).collect();
 
@@ -29,7 +29,8 @@ impl ChessState {
         Self {
             id,
             moves,
-            is_terminal
+            is_terminal,
+            make_move,
         }
     }
 }
@@ -40,7 +41,7 @@ impl State for ChessState {
     }
 
     fn get_actions(&self) -> Vec<String> {
-        self.moves
+        self.moves.clone()
     }
 
     fn is_terminal(&self) -> bool {
@@ -48,6 +49,6 @@ impl State for ChessState {
     }
 
     fn take_action(&self, action: &str) -> (f64, Self) {
-        todo!()
+        (self.make_move)(action.to_string())
     }
 }
