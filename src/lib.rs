@@ -5,7 +5,7 @@ mod chapter_04;
 pub mod chapter_05;
 pub mod chapter_06;
 pub mod service;
-mod chess_state;
+pub mod chess_state;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right

@@ -9,6 +9,14 @@ pub struct ChessState {
     make_move: fn(String) -> (f64, ChessState)
 }
 
+pub fn get_state_id_from_fen_string(game_as_fen_string: &String) -> String {
+    let regex = regex::Regex::new(r"^(.*) (.) (.*) (.*) (.*) (.*)").unwrap();
+    let captures = regex.captures(&game_as_fen_string).unwrap();
+    let parts: Vec<String> = captures.iter().skip(1).map(|m| m.unwrap().as_str().to_string()).collect();
+
+    format!("{}_{}_{}", parts[0], parts[2], parts[3])
+}
+
 impl ChessState {
     pub fn new(game_as_fen_string: String, make_move: fn(String) -> (f64, ChessState)) -> Self {
         let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&game_as_fen_string).unwrap();
@@ -20,11 +28,7 @@ impl ChessState {
             };
         let moves = moves.iter().map(|m| simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(m)).collect();
 
-        let regex = regex::Regex::new(r"^(.*) (.) (.*) (.*) (.*) (.*)").unwrap();
-        let captures = regex.captures(&game_as_fen_string).unwrap();
-        let parts: Vec<String> = captures.iter().skip(1).map(|m| m.unwrap().as_str().to_string()).collect();
-        
-        let id = format!("{}_{}_{}", parts[0], parts[2], parts[3]);
+        let id = get_state_id_from_fen_string(&game_as_fen_string);
 
         Self {
             id,

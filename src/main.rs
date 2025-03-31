@@ -1,8 +1,12 @@
 use eframe::egui;
 use egui::Ui;
+use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
+use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
+use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
+use ReinforcementLearning::chess_state::{get_state_id_from_fen_string};
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -26,6 +30,7 @@ struct MyApp {
     game_state: GameState,
     possible_moves: Vec<(usize, usize, ChessMoveType)>,
     previous_moves: Vec<ChessMoveType>,
+    policy_for_black: DeterministicPolicy,
 }
 
 impl MyApp {
@@ -39,13 +44,8 @@ impl MyApp {
             selected_square: None,
             possible_moves: Vec::new(),
             previous_moves: Vec::new(),
+            policy_for_black: DeterministicPolicy::new(),
         }
-    }
-
-    pub fn do_learning(&mut self) {
-        // let mut learner = MonteCarloOffPolicyLearner::new(starting_states, 1.0);
-        //
-        // learner.learn_for_episodes(1000000);
     }
 
     fn square_selected(&mut self, row: usize, col: usize) {
@@ -70,11 +70,45 @@ impl MyApp {
                     Some((_, _, m)) => {
                         self.previous_moves.push(m.clone());
                         self.chess_game.make_move(*m);
+                        self.game_state = self.chess_game.get_game_state();
+
+                        let next_action = match &self.game_state {
+                            GameState::InProgress { legal_moves, .. } => {
+                                Some(self.select_and_make_move(legal_moves))
+                            }
+                            GameState::Check { legal_moves, .. } => {
+                                Some(self.select_and_make_move(legal_moves))
+                            }
+                            GameState::Checkmate { .. } => None,
+                            GameState::Stalemate => None,
+                        };
+
+                        if let Some(action) = next_action {
+                            self.chess_game.make_move(action);
+                            self.previous_moves.push(action);
+                        }
+
                         self.selected_square = None;
                         self.possible_moves = Vec::new();
                         self.game_state = self.chess_game.get_game_state();
                     }
                 }
+            }
+        }
+    }
+
+    fn select_and_make_move(&self, legal_moves: &Vec<ChessMoveType>) -> ChessMoveType {
+        let game_as_fen_string = encode_game_as_string(&self.chess_game);
+        let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
+        match self.policy_for_black.select_action_for_state(&new_state_id) {
+            Ok(a) => {
+                legal_moves.iter().find(|m| {
+                    encode_move_as_long_algebraic_notation(m) == a
+                }).unwrap().clone()
+            },
+            Err(_) => {
+                let mut rng = rand::rng();
+                legal_moves.choose(&mut rng).unwrap().clone()
             }
         }
     }
