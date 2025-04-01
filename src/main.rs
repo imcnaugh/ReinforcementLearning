@@ -5,8 +5,9 @@ use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
 use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
+use ReinforcementLearning::attempts_at_framework::v1::agent::QLearning;
 use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
-use ReinforcementLearning::chess_state::{get_state_id_from_fen_string};
+use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -46,6 +47,26 @@ impl MyApp {
             previous_moves: Vec::new(),
             policy_for_black: DeterministicPolicy::new(),
         }
+    }
+
+    fn do_learning(&mut self, num_of_episodes: usize) {
+        println!("Starting Learning for {} episodes", num_of_episodes);
+        let mut q_learning_for_black_pieces = QLearning::new(0.1, 0.1, 1.0);
+        let mut game = ChessGame::new();
+        let possible_first_moves = match game.get_game_state() {
+            GameState::InProgress { legal_moves, .. } => legal_moves,
+            _ => panic!("Game should be in progress at this point"),
+        };
+        let first_states = possible_first_moves.iter().map(|m| {
+            let mut g = ChessGame::new();
+            g.make_move(m.clone());
+            let fen_string = encode_game_as_string(&g);
+            ChessState::new(fen_string)
+        }).collect();
+
+        q_learning_for_black_pieces.learn_for_episode_count(num_of_episodes, first_states);
+
+        self.policy_for_black = q_learning_for_black_pieces.get_policy().to_deterministic_policy()
     }
 
     fn square_selected(&mut self, row: usize, col: usize) {
@@ -256,6 +277,14 @@ impl MyApp {
         });
     }
 
+    fn learn_button(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            if ui.button("Learn").clicked() {
+                self.do_learning(100);
+            };
+        });
+    }
+
     fn previous_moves(&mut self, ui: &mut Ui) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.vertical(|ui| {
@@ -303,6 +332,7 @@ impl eframe::App for MyApp {
                     self.game_status_label(ui);
                     ui.add_space(10.0);
                     self.reset_game_button(ui);
+                    self.learn_button(ui);
                     ui.add_space(10.0);
                     self.previous_moves(ui);
                 });
