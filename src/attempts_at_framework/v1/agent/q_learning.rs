@@ -83,8 +83,8 @@ impl QLearning {
 
         let new_state_action_value = current_state_action_value
             + (self.step_size_parameter
-            * (reward + (self.discount_rate * max_next_state_action_value)
-            - current_state_action_value));
+                * (reward + (self.discount_rate * max_next_state_action_value)
+                    - current_state_action_value));
 
         self.action_values.insert(
             format!("{}_{}", state.get_id(), action),

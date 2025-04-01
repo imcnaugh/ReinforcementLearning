@@ -2,9 +2,9 @@ use eframe::egui;
 use egui::Ui;
 use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
+use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
-use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use ReinforcementLearning::attempts_at_framework::v1::agent::QLearning;
 use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
@@ -57,16 +57,22 @@ impl MyApp {
             GameState::InProgress { legal_moves, .. } => legal_moves,
             _ => panic!("Game should be in progress at this point"),
         };
-        let first_states = possible_first_moves.iter().map(|m| {
-            let mut g = ChessGame::new();
-            g.make_move(m.clone());
-            let fen_string = encode_game_as_string(&g);
-            ChessState::new(fen_string)
-        }).collect();
+        let first_states = possible_first_moves
+            .iter()
+            .map(|m| {
+                let mut g = ChessGame::new();
+                g.make_move(m.clone());
+                let fen_string = encode_game_as_string(&g);
+                ChessState::new(fen_string)
+            })
+            .collect();
 
         q_learning_for_black_pieces.learn_for_episode_count(num_of_episodes, first_states);
 
-        self.policy_for_black = q_learning_for_black_pieces.get_policy().to_deterministic_policy()
+        self.policy_for_black = q_learning_for_black_pieces
+            .get_policy()
+            .to_deterministic_policy();
+        println!("Finished Learning");
     }
 
     fn square_selected(&mut self, row: usize, col: usize) {
@@ -122,11 +128,11 @@ impl MyApp {
         let game_as_fen_string = encode_game_as_string(&self.chess_game);
         let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
         match self.policy_for_black.select_action_for_state(&new_state_id) {
-            Ok(a) => {
-                legal_moves.iter().find(|m| {
-                    encode_move_as_long_algebraic_notation(m) == a
-                }).unwrap().clone()
-            },
+            Ok(a) => legal_moves
+                .iter()
+                .find(|m| encode_move_as_long_algebraic_notation(m) == a)
+                .unwrap()
+                .clone(),
             Err(_) => {
                 let mut rng = rand::rng();
                 legal_moves.choose(&mut rng).unwrap().clone()
@@ -280,7 +286,7 @@ impl MyApp {
     fn learn_button(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("Learn").clicked() {
-                self.do_learning(100);
+                self.do_learning(1000);
             };
         });
     }

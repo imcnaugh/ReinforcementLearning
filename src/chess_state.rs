@@ -1,6 +1,6 @@
+use crate::attempts_at_framework::v1::state::State;
 use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
-use crate::attempts_at_framework::v1::state::State;
 
 #[derive(Debug, Clone)]
 pub struct ChessState {
@@ -13,28 +13,35 @@ pub struct ChessState {
 pub fn get_state_id_from_fen_string(game_as_fen_string: &String) -> String {
     let regex = regex::Regex::new(r"^(.*) (.) (.*) (.*) (.*) (.*)").unwrap();
     let captures = regex.captures(&game_as_fen_string).unwrap();
-    let parts: Vec<String> = captures.iter().skip(1).map(|m| m.unwrap().as_str().to_string()).collect();
+    let parts: Vec<String> = captures
+        .iter()
+        .skip(1)
+        .map(|m| m.unwrap().as_str().to_string())
+        .collect();
 
     format!("{}_{}_{}", parts[0], parts[2], parts[3])
 }
 
 impl ChessState {
     pub fn new(game_as_fen_string: String) -> Self {
-        let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&game_as_fen_string).unwrap();
+        let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(
+            &game_as_fen_string,
+        )
+        .unwrap();
         let (is_terminal, moves) = match game.get_game_state() {
-                GameState::InProgress { legal_moves, .. } => {
-                    let can_be_over = game.can_claim_draw().is_some();
+            GameState::InProgress { legal_moves, .. } => {
+                let can_be_over = game.can_claim_draw().is_some();
 
-                    (can_be_over, legal_moves)
-                },
-                GameState::Check { legal_moves, .. } => {
-                    let can_be_over = game.can_claim_draw().is_some();
+                (can_be_over, legal_moves)
+            }
+            GameState::Check { legal_moves, .. } => {
+                let can_be_over = game.can_claim_draw().is_some();
 
-                    (can_be_over, legal_moves)
-                },
-                GameState::Checkmate { .. } => (true, vec![]),
-                GameState::Stalemate => (true, vec![]),
-            };
+                (can_be_over, legal_moves)
+            }
+            GameState::Checkmate { .. } => (true, vec![]),
+            GameState::Stalemate => (true, vec![]),
+        };
         let moves = moves.iter().map(|m| simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(m)).collect();
 
         let id = get_state_id_from_fen_string(&game_as_fen_string);
@@ -62,7 +69,9 @@ impl State for ChessState {
     }
 
     fn take_action(&self, action: &str) -> (f64, Self) {
-        let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&self.fen_string).unwrap();
+        let mut game =
+            simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&self.fen_string)
+                .unwrap();
         let possible_moves = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => legal_moves,
             GameState::Check { legal_moves, .. } => legal_moves,
@@ -85,7 +94,8 @@ impl State for ChessState {
                 };
                 let next_move = next_possible_moves.choose(&mut rand::rng()).unwrap();
                 game.make_move(next_move.clone());
-                let new_fen_string = simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
+                let new_fen_string =
+                    simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 match game.get_game_state() {
                     GameState::InProgress { .. } => (0.0, ChessState::new(new_fen_string)),
                     GameState::Check { .. } => (0.0, ChessState::new(new_fen_string)),
@@ -102,7 +112,8 @@ impl State for ChessState {
                 };
                 let next_move = next_possible_moves.choose(&mut rand::rng()).unwrap();
                 game.make_move(next_move.clone());
-                let new_fen_string = simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
+                let new_fen_string =
+                    simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 match game.get_game_state() {
                     GameState::InProgress { .. } => (0.0, ChessState::new(new_fen_string)),
                     GameState::Check { .. } => (0.0, ChessState::new(new_fen_string)),
@@ -111,13 +122,15 @@ impl State for ChessState {
                 }
             }
             GameState::Checkmate { .. } => {
-                let fen_string = simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
+                let fen_string =
+                    simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 (1.0, ChessState::new(fen_string))
-            },
+            }
             GameState::Stalemate => {
-                let fen_string = simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
+                let fen_string =
+                    simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 (0.0, ChessState::new(fen_string))
-            },
+            }
         }
     }
 }
