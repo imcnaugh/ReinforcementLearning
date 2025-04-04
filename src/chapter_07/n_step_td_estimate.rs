@@ -26,6 +26,7 @@ impl State for BasicState {
 
     fn take_action(&self, action: &str) -> (f64, Self) {
         assert_eq!(action, "right");
+        // let reward = if self.id % 10 == 0 { 1.0 } else { 0.0 };
         let reward = if self.id == 99 { 1.0 } else { 0.0 };
         (reward, BasicState::new(self.id + 1))
     }
@@ -48,13 +49,13 @@ mod tests {
         let mut T = i32::MAX;
         let mut t: i32 = 0;
 
-        let mut rewards: Vec<f64> = vec![0.0; 100];
+        let mut rewards: Vec<f64> = vec![0.0; 101];
         loop {
             let state_id = state.get_id();
             if t < T {
                 let action = policy.select_action_for_state(&state_id).unwrap();
                 let (reward, ns) = state.take_action(&action);
-                rewards.push(reward);
+                rewards[t as usize] = reward;
                 if ns.is_terminal() {
                     T = t + 1
                 }
@@ -63,7 +64,7 @@ mod tests {
 
             let r = t - n + 1;
             if r >= 0 {
-                let g = (r + 1..(r + 1 + n).min(T))
+                let g = (r + 1..=(r + 1 + n).min(T))
                     .map(|i| {
                         let pow = i - r - 1;
                         let idk = discount_rate.powi(pow);
@@ -71,13 +72,13 @@ mod tests {
                     })
                     .sum::<f64>();
 
-                if r + n <= T {
-                    let existing_value = state_values.get(&state_id).unwrap_or(&0.0);
+                if r + n < T {
                     let value_of_state_at_r_plus_n = state_values.get(&(n + r).to_string()).unwrap_or(&0.0);
                     let g = (value_of_state_at_r_plus_n * discount_rate.powi(n)) + g;
-                    let new_value = existing_value + (size_step_parameter * (g - existing_value));
-                    state_values.insert(state_id, new_value);
                 }
+                let existing_value = state_values.get(&state_id).unwrap_or(&0.0);
+                let new_value = existing_value + (size_step_parameter * (g - existing_value));
+                state_values.insert(state_id, new_value);
             }
             t += 1;
             state = next_state.clone().unwrap();
@@ -86,7 +87,9 @@ mod tests {
             }
         }
 
-        println!("{:?}", rewards);
+        (90..100).for_each(|s| {
+            println!("{}: {}", s, state_values.get(&s.to_string()).unwrap());
+        })
     }
 
     #[test]
