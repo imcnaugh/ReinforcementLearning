@@ -73,7 +73,8 @@ mod tests {
                     .sum::<f64>();
 
                 if r + n < T {
-                    let value_of_state_at_r_plus_n = state_values.get(&(n + r).to_string()).unwrap_or(&0.0);
+                    let value_of_state_at_r_plus_n =
+                        state_values.get(&(n + r).to_string()).unwrap_or(&0.0);
                     let g = (value_of_state_at_r_plus_n * discount_rate.powi(n)) + g;
                 }
                 let existing_value = state_values.get(&state_id).unwrap_or(&0.0);
@@ -95,9 +96,7 @@ mod tests {
     #[test]
     fn test_n_step_policy_evaluation() {
         let mut policy = DeterministicPolicy::new();
-        (0..=99).for_each(|s| {
-            policy.set_actions_for_state(s.to_string(), String::from("right"))
-        });
+        (0..=99).for_each(|s| policy.set_actions_for_state(s.to_string(), String::from("right")));
 
         do_episode(policy);
     }
