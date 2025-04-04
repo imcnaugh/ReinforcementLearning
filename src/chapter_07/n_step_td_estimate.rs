@@ -34,54 +34,68 @@ impl State for BasicState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::attempts_at_framework::v1::policy::Policy;
+    use crate::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
     use std::collections::HashMap;
 
     fn do_episode<P: Policy>(policy: P) {
         let n = 10;
-        let discount_rate: f64 = 0.9;
-        let state_values: HashMap<String, f64> = HashMap::new();
+        let discount_rate: f64 = 1.0;
+        let size_step_parameter: f64 = 0.1;
+        let mut state_values: HashMap<String, f64> = HashMap::new();
 
         let mut state = BasicState::new(0);
-        let mut T = usize::INFINITY;
-        let mut t: usize = 0;
+        let mut next_state: Option<BasicState> = None;
+        let mut T = i32::MAX;
+        let mut t: i32 = 0;
 
-        let mut rewards: Vec<f64> = Vec::new();
+        let mut rewards: Vec<f64> = vec![0.0; 100];
         loop {
             let state_id = state.get_id();
             if t < T {
                 let action = policy.select_action_for_state(&state_id).unwrap();
-                let (reward, next_state) = state.take_action(&action);
+                let (reward, ns) = state.take_action(&action);
                 rewards.push(reward);
-                if next_state.is_terminal() {
+                if ns.is_terminal() {
                     T = t + 1
                 }
+                next_state = Some(ns);
             }
 
             let r = t - n + 1;
             if r >= 0 {
-                let g = (r + 1..r + 1 + n)
+                let g = (r + 1..(r + 1 + n).min(T))
                     .map(|i| {
                         let pow = i - r - 1;
-                        let idk = discount_rate.powi(pow as i32);
-                        idk * rewards[i]
+                        let idk = discount_rate.powi(pow);
+                        idk * rewards[i as usize]
                     })
                     .sum::<f64>();
 
-                if r + n < T {
+                if r + n <= T {
                     let existing_value = state_values.get(&state_id).unwrap_or(&0.0);
-                    let value_of_state_at_r_plus_n =
-                        existing_value + discount_rate.powi(n as i32) * g;
-                    let value = existing_value + discount_rate.powi(n as i32) * g;
+                    let value_of_state_at_r_plus_n = state_values.get(&(n + r).to_string()).unwrap_or(&0.0);
+                    let g = (value_of_state_at_r_plus_n * discount_rate.powi(n)) + g;
+                    let new_value = existing_value + (size_step_parameter * (g - existing_value));
+                    state_values.insert(state_id, new_value);
                 }
             }
             t += 1;
+            state = next_state.clone().unwrap();
             if r == T - 1 {
                 break;
             }
         }
+
+        println!("{:?}", rewards);
     }
 
     #[test]
-    fn test_n_step_policy_evaluation() {}
+    fn test_n_step_policy_evaluation() {
+        let mut policy = DeterministicPolicy::new();
+        (0..=99).for_each(|s| {
+            policy.set_actions_for_state(s.to_string(), String::from("right"))
+        });
+
+        do_episode(policy);
+    }
 }
