@@ -64,7 +64,7 @@ mod tests {
 
             let r = t - n + 1;
             if r >= 0 {
-                let g = (r + 1..=(r + 1 + n).min(T))
+                let mut g = (r + 1..=(r + 1 + n).min(T))
                     .map(|i| {
                         let pow = i - r - 1;
                         let idk = discount_rate.powi(pow);
@@ -75,7 +75,7 @@ mod tests {
                 if r + n < T {
                     let value_of_state_at_r_plus_n =
                         state_values.get(&(n + r).to_string()).unwrap_or(&0.0);
-                    let g = (value_of_state_at_r_plus_n * discount_rate.powi(n)) + g;
+                    g = (value_of_state_at_r_plus_n * discount_rate.powi(n)) + g;
                 }
                 let existing_value = state_values.get(&state_id).unwrap_or(&0.0);
                 let new_value = existing_value + (size_step_parameter * (g - existing_value));
