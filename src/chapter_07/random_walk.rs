@@ -31,14 +31,14 @@ impl State for RandomWalkNode<'_> {
         if self.id > 0 {
             actions.push(String::from("left"));
         }
-        if self.id < self.environment.num_of_nodes - 1 {
+        if self.id - 2 < self.environment.num_of_nodes {
             actions.push(String::from("right"));
         }
         actions
     }
 
     fn is_terminal(&self) -> bool {
-        if self.environment.num_of_nodes == self.id {
+        if self.environment.num_of_nodes - 1 == self.id {
             true
         } else if self.id == 0 {
             true
@@ -58,7 +58,7 @@ impl State for RandomWalkNode<'_> {
                 (reward, RandomWalkNode::new(self.environment, self.id - 1))
             }
             "right" => {
-                let reward = if self.id + 1 == self.environment.num_of_nodes {
+                let reward = if self.id == self.environment.num_of_nodes - 2 {
                     self.environment.right_reward
                 } else {
                     0.0
@@ -110,7 +110,7 @@ impl RandomWalkAgent {
     ) -> Self {
         let mut policy = RandomPolicy::new();
 
-        (0..=environment.num_of_nodes).for_each(|i| {
+        (0..environment.num_of_nodes).for_each(|i| {
             let state_id = i.to_string();
             let actions = vec![String::from("left"), String::from("right")];
             policy.set_actions_for_state(state_id, actions);
@@ -179,7 +179,7 @@ impl RandomWalkAgent {
                     }
                     let existing_value = self
                         .state_values
-                        .get(&index_of_state_to_update.to_string())
+                        .get(&state_id_at_index_to_update)
                         .unwrap_or(&0.0);
                     let new_value = existing_value
                         + (self.size_step_parameter * (discounted_sum_of_rewards - existing_value));
@@ -210,20 +210,52 @@ mod tests {
     #[test]
     fn test_multiple_n_steps_on_random_walk_environment() {
         let mut state_values: Vec<HashMap<String, f64>> = Vec::new();
+        let size_step_parameters = vec![0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
         let repetitions = 100;
-        (0..repetitions).for_each(|_| {
-            let random_walk_environment = RandomWalkEnvironment::new(19, 9, -1.0, 0.0);
-            let mut random_walk_agent =
-                RandomWalkAgent::new(10, 1.0, 0.9, 100, random_walk_environment);
-            random_walk_agent.run();
-            state_values.push(random_walk_agent.get_state_values().clone())
-        });
-        (0..=19).for_each(|i| {
-            let state_values = state_values.iter().fold(0.0, |mut acc, x| {
-                acc + x.get(&i.to_string()).unwrap_or(&0.0)
+        let n = 4;
+        let discount_rate = 1.0;
+        let number_of_episodes = 10;
+        let number_of_nodes = 19;
+        let left_reward = -1.0;
+        let right_reward = 1.0;
+        size_step_parameters.iter().for_each(|size_step_parameter| {
+            (0..repetitions).for_each(|_| {
+                let random_walk_environment = RandomWalkEnvironment::new(
+                    number_of_nodes,
+                    number_of_nodes / 2,
+                    left_reward,
+                    right_reward,
+                );
+                let mut random_walk_agent = RandomWalkAgent::new(
+                    n,
+                    discount_rate,
+                    *size_step_parameter,
+                    number_of_episodes,
+                    random_walk_environment,
+                );
+                random_walk_agent.run();
+                state_values.push(random_walk_agent.get_state_values().clone())
             });
-            let state_id = i.to_string();
-            println!("State {}: {}", state_id, state_values / repetitions as f64);
-        })
+            let mean_squared_error = (0..number_of_nodes)
+                .map(|i| {
+                    let state_values = state_values.iter().fold(0.0, |mut acc, x| {
+                        acc + x.get(&i.to_string()).unwrap_or(&0.0)
+                    });
+                    let state_id = i.to_string();
+                    let expected_value = if i == 0 || i == number_of_nodes - 1 {
+                        0.0
+                    } else {
+                        (((right_reward - left_reward) / (number_of_nodes - 1) as f64) * i as f64)
+                            + left_reward
+                    };
+                    let average_value = state_values / repetitions as f64;
+                    let error = average_value - expected_value;
+                    // println!("State {}: value: {} expected: {}, diff: {}", state_id, average_value, expected_value, error);
+                    error.powi(2)
+                })
+                .sum::<f64>();
+            let average_mean_squared_error = mean_squared_error / number_of_nodes as f64;
+            println!("Mean squared error: {}", average_mean_squared_error.sqrt());
+        });
     }
 }
