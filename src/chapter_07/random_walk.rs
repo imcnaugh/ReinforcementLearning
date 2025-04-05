@@ -50,7 +50,7 @@ impl State for RandomWalkNode<'_> {
     fn take_action(&self, action: &str) -> (f64, Self) {
         match action {
             "left" => {
-                let reward = if self.id - 1 == 0 {
+                let reward = if self.id == 1 {
                     self.environment.left_reward
                 } else {
                     0.0
@@ -140,7 +140,10 @@ impl RandomWalkAgent {
                 let current_state_id = state.get_id();
                 previous_state_ids.push(current_state_id.clone());
                 if current_time_step < terminal_time_step.unwrap_or(usize::MAX) {
-                    let action = self.policy.select_action_for_state(&current_state_id).unwrap();
+                    let action = self
+                        .policy
+                        .select_action_for_state(&current_state_id)
+                        .unwrap();
                     let (reward, ns) = state.take_action(&action);
                     rewards.push(reward);
                     if ns.is_terminal() {
@@ -151,31 +154,47 @@ impl RandomWalkAgent {
 
                 let index_of_state_to_update = current_time_step as i32 - (self.n + 1) as i32;
                 if index_of_state_to_update >= 0 {
-                    let state_id_at_index_to_update = previous_state_ids[index_of_state_to_update as usize].clone();
+                    let state_id_at_index_to_update =
+                        previous_state_ids[index_of_state_to_update as usize].clone();
                     let start_index = index_of_state_to_update as usize + 1;
-                    let end_index: usize = index_of_state_to_update as usize + self.n + 1;
+                    let end_index: usize = index_of_state_to_update as usize + self.n;
                     let end_index = end_index.min(terminal_time_step.unwrap_or(usize::MAX));
-                    let mut discounted_sum_of_rewards = (start_index..=end_index).map(|i| {
-                        let pow = i as i32 - index_of_state_to_update - 1;
-                        self.discount_rate.powi(pow) * rewards[i]
-                    }).sum::<f64>();
-                    if index_of_state_to_update as usize + self.n < terminal_time_step.unwrap_or(usize::MAX) {
-                        let state_id_at_index_plus_n = (index_of_state_to_update as usize + self.n).to_string();
-                        let existing_value = self.state_values.get(&state_id_at_index_plus_n).unwrap_or(&0.0);
-                        discounted_sum_of_rewards = discounted_sum_of_rewards + (self.discount_rate.powi(self.n as i32) * existing_value);
+                    let mut discounted_sum_of_rewards = (start_index..=end_index)
+                        .map(|i| {
+                            let pow = i as i32 - index_of_state_to_update - 1;
+                            self.discount_rate.powi(pow) * rewards[i - 1]
+                        })
+                        .sum::<f64>();
+                    if index_of_state_to_update as usize + self.n
+                        < terminal_time_step.unwrap_or(usize::MAX)
+                    {
+                        let state_id_at_index_plus_n =
+                            (index_of_state_to_update as usize + self.n).to_string();
+                        let existing_value = self
+                            .state_values
+                            .get(&state_id_at_index_plus_n)
+                            .unwrap_or(&0.0);
+                        discounted_sum_of_rewards = discounted_sum_of_rewards
+                            + (self.discount_rate.powi(self.n as i32) * existing_value);
                     }
-                    let existing_value = self.state_values.get(&index_of_state_to_update.to_string()).unwrap_or(&0.0);
-                    let new_value = existing_value + (self.size_step_parameter * (discounted_sum_of_rewards - existing_value));
-                    self.state_values.insert(state_id_at_index_to_update, new_value);
+                    let existing_value = self
+                        .state_values
+                        .get(&index_of_state_to_update.to_string())
+                        .unwrap_or(&0.0);
+                    let new_value = existing_value
+                        + (self.size_step_parameter * (discounted_sum_of_rewards - existing_value));
+                    self.state_values
+                        .insert(state_id_at_index_to_update, new_value);
                 }
 
                 current_time_step += 1;
                 state = next_state.clone().unwrap();
-                if state.is_terminal() {
+                if index_of_state_to_update
+                    == (terminal_time_step.unwrap_or(i32::MAX as usize) as i32 - 1)
+                {
                     break;
                 }
             }
-
         });
     }
 
@@ -190,13 +209,21 @@ mod tests {
 
     #[test]
     fn test_multiple_n_steps_on_random_walk_environment() {
-        let random_walk_environment = RandomWalkEnvironment::new(19, 9, -1.0, 0.0);
-        let mut random_walk_agent = RandomWalkAgent::new(100, 1.0, 0.9, 100, random_walk_environment);
-        random_walk_agent.run();
-        let state_values = random_walk_agent.get_state_values();
-        (0..19).for_each(|i| {
+        let mut state_values: Vec<HashMap<String, f64>> = Vec::new();
+        let repetitions = 100;
+        (0..repetitions).for_each(|_| {
+            let random_walk_environment = RandomWalkEnvironment::new(19, 9, -1.0, 0.0);
+            let mut random_walk_agent =
+                RandomWalkAgent::new(10, 1.0, 0.9, 100, random_walk_environment);
+            random_walk_agent.run();
+            state_values.push(random_walk_agent.get_state_values().clone())
+        });
+        (0..=19).for_each(|i| {
+            let state_values = state_values.iter().fold(0.0, |mut acc, x| {
+                acc + x.get(&i.to_string()).unwrap_or(&0.0)
+            });
             let state_id = i.to_string();
-            println!("State {}: {}", state_id, state_values.get(&state_id).unwrap_or(&0.0));
+            println!("State {}: {}", state_id, state_values / repetitions as f64);
         })
     }
 }
