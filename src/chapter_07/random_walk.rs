@@ -205,6 +205,8 @@ impl RandomWalkAgent {
 
 #[cfg(test)]
 mod tests {
+    use plotters::prelude::{ShapeStyle, BLACK};
+    use crate::service::{LineChartBuilder, LineChartData};
     use super::*;
 
     #[test]
@@ -218,6 +220,7 @@ mod tests {
         let number_of_nodes = 19;
         let left_reward = -1.0;
         let right_reward = 1.0;
+        let mut points: Vec<(f32, f32)> = Vec::new();
         size_step_parameters.iter().for_each(|size_step_parameter| {
             (0..repetitions).for_each(|_| {
                 let random_walk_environment = RandomWalkEnvironment::new(
@@ -229,7 +232,7 @@ mod tests {
                 let mut random_walk_agent = RandomWalkAgent::new(
                     n,
                     discount_rate,
-                    *size_step_parameter,
+                    size_step_parameter.clone(),
                     number_of_episodes,
                     random_walk_environment,
                 );
@@ -255,7 +258,18 @@ mod tests {
                 })
                 .sum::<f64>();
             let average_mean_squared_error = mean_squared_error / number_of_nodes as f64;
+            points.push((size_step_parameter.clone() as f32, average_mean_squared_error as f32));
             println!("Mean squared error: {}", average_mean_squared_error.sqrt());
         });
+
+        let line_chart_points = LineChartData::new(
+            format!("{} step mse", n),
+            points,
+            ShapeStyle::from(&BLACK)
+        );
+        let mut builder = LineChartBuilder::new();
+        builder.set_path(std::path::PathBuf::from("output/chapter7/random_walk_mse.png"))
+            .add_data(line_chart_points);
+        builder.create_chart().unwrap();
     }
 }
