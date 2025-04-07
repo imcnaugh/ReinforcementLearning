@@ -104,12 +104,14 @@ impl MyApp {
                         let next_action = match &self.game_state {
                             GameState::InProgress { legal_moves, .. } => {
                                 let (m, on_policy) = self.select_and_make_move(legal_moves);
-                                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", on_policy));
+                                self.last_move_made_on_policy_string =
+                                    Some(format!("on policy: {:?}", on_policy));
                                 Some(m)
                             }
                             GameState::Check { legal_moves, .. } => {
                                 let (m, on_policy) = self.select_and_make_move(legal_moves);
-                                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", on_policy));
+                                self.last_move_made_on_policy_string =
+                                    Some(format!("on policy: {:?}", on_policy));
                                 Some(m)
                             }
                             GameState::Checkmate { .. } => None,
@@ -134,13 +136,14 @@ impl MyApp {
         let game_as_fen_string = encode_game_as_string(&self.chess_game);
         let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
         match self.policy_for_black.select_action_for_state(&new_state_id) {
-            Ok(a) => {
-                (legal_moves
+            Ok(a) => (
+                legal_moves
                     .iter()
                     .find(|m| encode_move_as_long_algebraic_notation(m) == a)
                     .unwrap()
-                    .clone(), true)
-            },
+                    .clone(),
+                true,
+            ),
             Err(_) => {
                 let mut rng = rand::rng();
                 (legal_moves.choose(&mut rng).unwrap().clone(), false)
@@ -345,7 +348,11 @@ impl eframe::App for MyApp {
                 ui.vertical(|ui| {
                     self.game_status_label(ui);
                     ui.add_space(10.0);
-                    ui.label(self.last_move_made_on_policy_string.as_ref().unwrap_or(&String::from("")));
+                    ui.label(
+                        self.last_move_made_on_policy_string
+                            .as_ref()
+                            .unwrap_or(&String::from("")),
+                    );
                     ui.add_space(10.0);
                     self.reset_game_button(ui);
                     self.learn_button(ui);
