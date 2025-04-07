@@ -69,6 +69,7 @@ impl State for ChessState {
     }
 
     fn take_action(&self, action: &str) -> (f64, Self) {
+        let mut rng = rand::rng();
         let mut game =
             simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&self.fen_string)
                 .unwrap();
@@ -92,7 +93,7 @@ impl State for ChessState {
                     GameState::Checkmate { .. } => Vec::new(),
                     GameState::Stalemate => Vec::new(),
                 };
-                let next_move = next_possible_moves.choose(&mut rand::rng()).unwrap();
+                let next_move = next_possible_moves.choose(&mut rng).unwrap();
                 game.make_move(next_move.clone());
                 let new_fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
@@ -110,7 +111,7 @@ impl State for ChessState {
                     GameState::Checkmate { .. } => Vec::new(),
                     GameState::Stalemate => Vec::new(),
                 };
-                let next_move = next_possible_moves.choose(&mut rand::rng()).unwrap();
+                let next_move = next_possible_moves.choose(&mut rng).unwrap();
                 game.make_move(next_move.clone());
                 let new_fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);

@@ -50,7 +50,7 @@ impl MyApp {
             previous_moves: Vec::new(),
             policy_for_black: DeterministicPolicy::new(),
             last_move_made_on_policy_string: None,
-            agent: Box::new(NStepSarsa::new(50, 0.5, 0.2, 1.0)),
+            agent: Box::new(NStepSarsa::new(100, 0.5, 0.2, 1.0)),
             num_episodes_to_learn_for: 0,
         }
     }

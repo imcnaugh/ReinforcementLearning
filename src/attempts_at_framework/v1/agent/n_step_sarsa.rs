@@ -25,7 +25,7 @@ impl NStepSarsa {
         Self {
             n,
             policy: EGreedyPolicy::new(e),
-            default_state_value: 0.0,
+            default_state_value: -10.0,
             step_size_parameter,
             discount_rate,
             state_action_values: HashMap::new(),
@@ -152,14 +152,13 @@ impl NStepSarsa {
     }
 
     fn pick_action_for_state_based_on_policy<S: State>(&self, current_state: &S) -> String {
-        let mut rng = rand::rng();
 
         match self.policy.select_action_for_state(&current_state.get_id()) {
             Ok(action) => action,
             Err(_) => {
-                current_state
-                    .get_actions()
-                    .choose(&mut rng)
+                let actions = current_state.get_actions();
+                actions
+                    .choose(&mut rand::rng())
                     .unwrap()
                     .clone()
             },
