@@ -182,7 +182,7 @@ impl State for WindyGridworldState<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::attempts_at_framework::v1::agent::{QLearning, Sarsa};
+    use crate::attempts_at_framework::v1::agent::{QLearning, SarsaZero};
     use crate::attempts_at_framework::v1::policy::Policy;
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
         let world = WindyGridworld::new(6, 9);
         let starting_point = world.make_state_for_row_col(3, 0);
 
-        let mut agent = Sarsa::new(0.1, 0.5, 0.9);
+        let mut agent = SarsaZero::new(0.1, 0.5, 0.9);
         agent.lear_for_episode_count(100000, vec![starting_point.clone()]);
 
         let policy = agent.get_policy().to_deterministic_policy();

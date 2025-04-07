@@ -3,7 +3,7 @@ use crate::attempts_at_framework::v1::state::State;
 use rand::prelude::IndexedRandom;
 use std::collections::HashMap;
 
-pub struct NStep {
+pub struct NStepSarsa {
     n: usize,
     policy: EGreedyPolicy,
     default_state_value: f64,
@@ -12,7 +12,7 @@ pub struct NStep {
     state_values: HashMap<String, f64>,
 }
 
-impl NStep {
+impl NStepSarsa {
     pub fn new(n: usize, e: f64, step_size_parameter: f64, discount_rate: f64) -> Self {
         if step_size_parameter < 0.0 || step_size_parameter > 1.0 {
             panic!("Step size parameter must be between 0.0 and 1.0")

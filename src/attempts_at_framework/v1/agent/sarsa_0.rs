@@ -4,7 +4,7 @@ use crate::attempts_at_framework::v1::state::State;
 use rand::prelude::IndexedRandom;
 use std::collections::HashMap;
 
-pub struct Sarsa {
+pub struct SarsaZero {
     action_values: HashMap<String, f64>,
     policy: EGreedyPolicy,
     default_state_action_value: f64,
@@ -12,7 +12,7 @@ pub struct Sarsa {
     discount_rate: f64,
 }
 
-impl Sarsa {
+impl SarsaZero {
     pub fn new(e: f64, step_size_parameter: f64, discount_rate: f64) -> Self {
         if step_size_parameter < 0.0 || step_size_parameter > 1.0 {
             panic!("step size parameter must be between 0.0 and 1.0"); // Dose it?

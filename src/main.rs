@@ -5,7 +5,7 @@ use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
-use ReinforcementLearning::attempts_at_framework::v1::agent::{NStep, QLearning};
+use ReinforcementLearning::attempts_at_framework::v1::agent::{NStepSarsa, QLearning};
 use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 
@@ -53,7 +53,7 @@ impl MyApp {
 
     fn do_learning(&mut self, num_of_episodes: usize) {
         println!("Starting Learning for {} episodes", num_of_episodes);
-        let mut agent = NStep::new(50, 0.1, 0.1, 1.0);
+        let mut agent = NStepSarsa::new(50, 0.1, 0.1, 1.0);
         let mut game = ChessGame::new();
         let possible_first_moves = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => legal_moves,
@@ -71,9 +71,7 @@ impl MyApp {
 
         agent.learn_for_episode_count(num_of_episodes, first_states);
 
-        self.policy_for_black = agent
-            .get_policy()
-            .to_deterministic_policy();
+        self.policy_for_black = agent.get_policy().to_deterministic_policy();
         println!("Finished Learning");
     }
 

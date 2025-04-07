@@ -206,7 +206,7 @@ impl RandomWalkAgent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::attempts_at_framework::v1::agent::NStep;
+    use crate::attempts_at_framework::v1::agent::NStepSarsa;
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, BLACK};
 
@@ -292,7 +292,7 @@ mod tests {
 
         let starting_state = random_walk_environment.get_start_node();
 
-        let mut agent = NStep::new(4, 0.0, 0.4, 1.0);
+        let mut agent = NStepSarsa::new(4, 0.0, 0.4, 1.0);
         agent.learn_for_episode_count(100, vec![starting_state.clone().clone()]);
     }
 }
