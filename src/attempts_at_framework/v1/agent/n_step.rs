@@ -53,12 +53,12 @@ impl NStep {
         let mut terminal_time: Option<usize> = None;
         let mut current_state = starting_state;
         let mut next_state: Option<S> = None;
-        let mut states_ids_and_rewards: Vec<(String, f64)> = Vec::new();
-        states_ids_and_rewards.push((current_state.get_id(), 0.0));
+        let mut states_and_rewards: Vec<(S, f64)> = Vec::new();
+        states_and_rewards.push((current_state.clone(), 0.0));
 
         for time_step in 0..usize::MAX {
-            let current_state_id = current_state.get_id();
             if time_step < terminal_time.unwrap_or(usize::MAX) {
+                let current_state_id = current_state.get_id();
                 let action = match self.policy.select_action_for_state(&current_state_id) {
                     Ok(action) => action,
                     Err(_) => current_state
@@ -68,7 +68,7 @@ impl NStep {
                         .clone(),
                 };
                 let (reward, ns) = current_state.take_action(&action);
-                states_ids_and_rewards.push((ns.get_id(), reward));
+                states_and_rewards.push((ns.clone(), reward));
                 if ns.is_terminal() {
                     terminal_time = Some(time_step + 1);
                 }
@@ -80,7 +80,7 @@ impl NStep {
                 let f = (time_step_to_update + 1) as usize;
                 let l = (time_step_to_update as usize + self.n)
                     .min(terminal_time.unwrap_or(usize::MAX));
-                let sum_of_rewards = &states_ids_and_rewards[f..l]
+                let sum_of_rewards = &states_and_rewards[f..l]
                     .iter()
                     .enumerate()
                     .map(|(index, (_, r))| {
@@ -94,10 +94,10 @@ impl NStep {
                     < terminal_time.unwrap_or(usize::MAX)
                 {
                     let adjusted_discount_rate = self.discount_rate.powi(self.n as i32);
-                    let (s_id, _) = &states_ids_and_rewards[time_step_to_update as usize + self.n];
+                    let (s, _) = &states_and_rewards[time_step_to_update as usize + self.n];
                     let state_value = self
                         .state_values
-                        .get(s_id)
+                        .get(&s.get_id())
                         .unwrap_or(&self.default_state_value);
                     state_value * adjusted_discount_rate
                 } else {
@@ -106,21 +106,26 @@ impl NStep {
 
                 let total_reward = sum_of_rewards + state_value_at_r_plus_n;
 
-                let state_id_to_update = &states_ids_and_rewards[time_step_to_update as usize].0;
+                let state_to_update = &states_and_rewards[time_step_to_update as usize].0;
+                let state_id_to_update = state_to_update.get_id();
                 let existing_value = self
                     .state_values
-                    .get(state_id_to_update)
+                    .get(&state_id_to_update)
                     .unwrap_or(&self.default_state_value);
                 let new_value =
                     existing_value + (self.step_size_parameter * (total_reward - existing_value));
                 self.state_values
                     .insert(state_id_to_update.clone(), new_value);
+
+                // let best_action = state_to_update.get_actions().iter().fold((f64::MIN, String::new()), |(best_reward, best_action), action| {
+                //
+                // });
             }
 
             if time_step_to_update as usize == terminal_time.unwrap_or(usize::MAX) - 1 {
                 break;
             }
-            current_state = next_state.clone().unwrap();
+            current_state = next_state.unwrap_or(current_state);
             next_state = None;
         }
     }
