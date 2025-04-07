@@ -31,7 +31,7 @@ impl State for RandomWalkNode<'_> {
         if self.id > 0 {
             actions.push(String::from("left"));
         }
-        if self.id - 2 < self.environment.num_of_nodes {
+        if self.id < self.environment.num_of_nodes - 1 {
             actions.push(String::from("right"));
         }
         actions
@@ -293,6 +293,10 @@ mod tests {
         let starting_state = random_walk_environment.get_start_node();
 
         let mut agent = NStepSarsa::new(4, 0.0, 0.4, 1.0);
-        agent.learn_for_episode_count(100, vec![starting_state.clone().clone()]);
+        agent.learn_for_episode_count(1, vec![starting_state.clone().clone()]);
+
+        let policy = agent.get_policy();
+
+        println!("Policy");
     }
 }

@@ -1,6 +1,6 @@
 use eframe::egui;
 use egui::Ui;
-use rand::prelude::IndexedRandom;
+use rand::prelude::{IndexedRandom, IteratorRandom};
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
@@ -33,6 +33,8 @@ struct MyApp {
     previous_moves: Vec<ChessMoveType>,
     policy_for_black: DeterministicPolicy,
     last_move_made_on_policy_string: Option<String>,
+    agent: Box<NStepSarsa>,
+    num_episodes_to_learn_for: usize,
 }
 
 impl MyApp {
@@ -48,12 +50,13 @@ impl MyApp {
             previous_moves: Vec::new(),
             policy_for_black: DeterministicPolicy::new(),
             last_move_made_on_policy_string: None,
+            agent: Box::new(NStepSarsa::new(50, 0.5, 0.2, 1.0)),
+            num_episodes_to_learn_for: 0,
         }
     }
 
-    fn do_learning(&mut self, num_of_episodes: usize) {
-        println!("Starting Learning for {} episodes", num_of_episodes);
-        let mut agent = NStepSarsa::new(50, 0.1, 0.1, 1.0);
+    fn do_learning(&mut self) {
+        println!("Starting Learning for {} episodes", self.num_episodes_to_learn_for);
         let mut game = ChessGame::new();
         let possible_first_moves = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => legal_moves,
@@ -69,9 +72,9 @@ impl MyApp {
             })
             .collect();
 
-        agent.learn_for_episode_count(num_of_episodes, first_states);
+        self.agent.learn_for_episode_count(self.num_episodes_to_learn_for, first_states);
 
-        self.policy_for_black = agent.get_policy().to_deterministic_policy();
+        self.policy_for_black = self.agent.get_policy().to_deterministic_policy();
         println!("Finished Learning");
     }
 
@@ -293,10 +296,23 @@ impl MyApp {
     }
 
     fn learn_button(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            if ui.button("Learn").clicked() {
-                self.do_learning(1000);
-            };
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Learn").clicked() {
+                    self.do_learning();
+                };
+
+                ui.horizontal(|ui| {
+                    ui.label("Number of Episodes:");
+                    let mut num_episodes_string = self.num_episodes_to_learn_for.to_string();
+                    if ui.text_edit_singleline(&mut num_episodes_string).changed() {
+                        if let Ok(num) = num_episodes_string.parse::<u32>() {
+                            self.num_episodes_to_learn_for = num as usize;
+                        }
+                    }
+                });
+            });
+            ui.label(format!("total episodes learned from: {}", self.agent.get_num_of_episodes_learned_for()));
         });
     }
 
