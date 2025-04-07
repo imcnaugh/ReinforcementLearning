@@ -32,6 +32,7 @@ struct MyApp {
     possible_moves: Vec<(usize, usize, ChessMoveType)>,
     previous_moves: Vec<ChessMoveType>,
     policy_for_black: DeterministicPolicy,
+    last_move_made_on_policy_string: Option<String>,
 }
 
 impl MyApp {
@@ -46,6 +47,7 @@ impl MyApp {
             possible_moves: Vec::new(),
             previous_moves: Vec::new(),
             policy_for_black: DeterministicPolicy::new(),
+            last_move_made_on_policy_string: None,
         }
     }
 
@@ -101,10 +103,14 @@ impl MyApp {
 
                         let next_action = match &self.game_state {
                             GameState::InProgress { legal_moves, .. } => {
-                                Some(self.select_and_make_move(legal_moves))
+                                let (m, on_policy) = self.select_and_make_move(legal_moves);
+                                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", on_policy));
+                                Some(m)
                             }
                             GameState::Check { legal_moves, .. } => {
-                                Some(self.select_and_make_move(legal_moves))
+                                let (m, on_policy) = self.select_and_make_move(legal_moves);
+                                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", on_policy));
+                                Some(m)
                             }
                             GameState::Checkmate { .. } => None,
                             GameState::Stalemate => None,
@@ -124,18 +130,20 @@ impl MyApp {
         }
     }
 
-    fn select_and_make_move(&self, legal_moves: &Vec<ChessMoveType>) -> ChessMoveType {
+    fn select_and_make_move(&self, legal_moves: &Vec<ChessMoveType>) -> (ChessMoveType, bool) {
         let game_as_fen_string = encode_game_as_string(&self.chess_game);
         let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
         match self.policy_for_black.select_action_for_state(&new_state_id) {
-            Ok(a) => legal_moves
-                .iter()
-                .find(|m| encode_move_as_long_algebraic_notation(m) == a)
-                .unwrap()
-                .clone(),
+            Ok(a) => {
+                (legal_moves
+                    .iter()
+                    .find(|m| encode_move_as_long_algebraic_notation(m) == a)
+                    .unwrap()
+                    .clone(), true)
+            },
             Err(_) => {
                 let mut rng = rand::rng();
-                legal_moves.choose(&mut rng).unwrap().clone()
+                (legal_moves.choose(&mut rng).unwrap().clone(), false)
             }
         }
     }
@@ -336,6 +344,8 @@ impl eframe::App for MyApp {
                 ui.add_space(10.0);
                 ui.vertical(|ui| {
                     self.game_status_label(ui);
+                    ui.add_space(10.0);
+                    ui.label(self.last_move_made_on_policy_string.as_ref().unwrap_or(&String::from("")));
                     ui.add_space(10.0);
                     self.reset_game_button(ui);
                     self.learn_button(ui);
