@@ -56,7 +56,10 @@ impl MyApp {
     }
 
     fn do_learning(&mut self) {
-        println!("Starting Learning for {} episodes", self.num_episodes_to_learn_for);
+        println!(
+            "Starting Learning for {} episodes",
+            self.num_episodes_to_learn_for
+        );
         let mut game = ChessGame::new();
         let possible_first_moves = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => legal_moves,
@@ -72,7 +75,8 @@ impl MyApp {
             })
             .collect();
 
-        self.agent.learn_for_episode_count(self.num_episodes_to_learn_for, first_states);
+        self.agent
+            .learn_for_episode_count(self.num_episodes_to_learn_for, first_states);
 
         self.policy_for_black = self.agent.get_policy().to_deterministic_policy();
         println!("Finished Learning");
@@ -312,7 +316,10 @@ impl MyApp {
                     }
                 });
             });
-            ui.label(format!("total episodes learned from: {}", self.agent.get_num_of_episodes_learned_for()));
+            ui.label(format!(
+                "total episodes learned from: {}",
+                self.agent.get_num_of_episodes_learned_for()
+            ));
         });
     }
 

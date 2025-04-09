@@ -70,7 +70,11 @@ impl NStepSarsa {
                     terminal_time = Some(time_step + 1);
                 } else {
                     next_action = Some(self.pick_action_for_state_based_on_policy(&ns));
-                    states_actions_and_rewards.push((ns.clone(), next_action.clone().unwrap(), reward));
+                    states_actions_and_rewards.push((
+                        ns.clone(),
+                        next_action.clone().unwrap(),
+                        reward,
+                    ));
                     next_state = Some(ns);
                 }
             }
@@ -94,7 +98,8 @@ impl NStepSarsa {
                     < terminal_time.unwrap_or(usize::MAX)
                 {
                     let adjusted_discount_rate = self.discount_rate.powi(self.n as i32);
-                    let (s, a, _) = &states_actions_and_rewards[time_step_to_update as usize + self.n];
+                    let (s, a, _) =
+                        &states_actions_and_rewards[time_step_to_update as usize + self.n];
                     let state_action_id = Self::get_state_action_id(&s.get_id(), &a);
                     let state_value = self
                         .state_action_values
@@ -107,9 +112,11 @@ impl NStepSarsa {
 
                 let total_reward = sum_of_rewards + state_value_at_r_plus_n;
 
-                let (state_to_update, action_chosen, _) = &states_actions_and_rewards[time_step_to_update as usize];
+                let (state_to_update, action_chosen, _) =
+                    &states_actions_and_rewards[time_step_to_update as usize];
                 let state_id_to_update = state_to_update.get_id();
-                let state_action_id = Self::get_state_action_id(&state_id_to_update, &action_chosen);
+                let state_action_id =
+                    Self::get_state_action_id(&state_id_to_update, &action_chosen);
                 let existing_value = self
                     .state_action_values
                     .get(&state_action_id)
@@ -119,16 +126,27 @@ impl NStepSarsa {
                 self.state_action_values
                     .insert(state_action_id.clone(), new_value);
 
-                let (_, best_action) = state_to_update.get_actions().iter().fold((f64::MIN, String::new()), |(best_reward, best_action), action| {
-                    let possible_state_action_id = Self::get_state_action_id(&state_id_to_update, action);
-                    let possible_state_action_value = self.state_action_values.get(&possible_state_action_id).unwrap_or(&self.default_state_value);
-                    if *possible_state_action_value > best_reward {
-                        (*possible_state_action_value, action.clone())
-                    } else {
-                        (best_reward, best_action)
-                    }
-                });
-                self.policy.set_actions_for_state(state_id_to_update.clone(), state_to_update.get_actions().clone(), best_action);
+                let (_, best_action) = state_to_update.get_actions().iter().fold(
+                    (f64::MIN, String::new()),
+                    |(best_reward, best_action), action| {
+                        let possible_state_action_id =
+                            Self::get_state_action_id(&state_id_to_update, action);
+                        let possible_state_action_value = self
+                            .state_action_values
+                            .get(&possible_state_action_id)
+                            .unwrap_or(&self.default_state_value);
+                        if *possible_state_action_value > best_reward {
+                            (*possible_state_action_value, action.clone())
+                        } else {
+                            (best_reward, best_action)
+                        }
+                    },
+                );
+                self.policy.set_actions_for_state(
+                    state_id_to_update.clone(),
+                    state_to_update.get_actions().clone(),
+                    best_action,
+                );
             }
 
             let terminal_time_as_i32 = match terminal_time {
@@ -152,16 +170,12 @@ impl NStepSarsa {
     }
 
     fn pick_action_for_state_based_on_policy<S: State>(&self, current_state: &S) -> String {
-
         match self.policy.select_action_for_state(&current_state.get_id()) {
             Ok(action) => action,
             Err(_) => {
                 let actions = current_state.get_actions();
-                actions
-                    .choose(&mut rand::rng())
-                    .unwrap()
-                    .clone()
-            },
+                actions.choose(&mut rand::rng()).unwrap().clone()
+            }
         }
     }
 }
