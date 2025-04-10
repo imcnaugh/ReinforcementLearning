@@ -3,6 +3,7 @@ use crate::attempts_at_framework::v1::policy::DeterministicPolicy;
 use rand::prelude::IndexedRandom;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct StochasticPolicy {
     state_action_odds: HashMap<String, Vec<(String, f64)>>,
 }

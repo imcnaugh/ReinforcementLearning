@@ -1,6 +1,7 @@
 use crate::attempts_at_framework::v1::policy::policy::{Policy, PolicyError};
 use crate::attempts_at_framework::v1::policy::{DeterministicPolicy, StochasticPolicy};
 
+#[derive(Debug, Clone)]
 pub struct EGreedyPolicy {
     policy: StochasticPolicy,
     e: f64,
