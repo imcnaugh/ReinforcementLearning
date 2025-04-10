@@ -15,52 +15,60 @@ pub fn tabular_dyna_q<S: State>(
     let mut model: HashMap<(String, String), (f64, String)> = HashMap::new();
     let mut policy: EGreedyPolicy = EGreedyPolicy::new(0.1);
     let mut rng = rand::rng();
+    (0..iteration_count).for_each(|episode_count| {
+        let mut state = state_map.get("0_2").unwrap().clone();
 
-    (0..iteration_count).for_each(|_| {
-        let state = states.iter().choose(&mut rng).unwrap().clone();
-        let action = match policy.select_action_for_state(&state.get_id()) {
-            Ok(a) => a,
-            Err(_) => state.get_actions().iter().choose(&mut rng).unwrap().clone(),
-        };
-
-        let state_action_id = get_state_action_id(&state.get_id(), &action);
-        let (reward, next_state) = state.take_action(&action);
-        let current_state_action_value = state_action_values.get(&state_action_id).unwrap_or(&0.0);
-        let next_state_best_action_value =
-            get_max_value_of_state_actions(&state_action_values, &next_state)
-                .unwrap_or((0.0, String::new()));
-        let new_state_action_value = current_state_action_value
-            + (size_step_parameter
-                * (reward + (discount_rate * next_state_best_action_value.0)
-                    - current_state_action_value));
-        state_action_values.insert(state_action_id.clone(), new_state_action_value);
-        model.insert(
-            (state.get_id(), action),
-            (new_state_action_value, next_state.get_id()),
-        );
-
-        (0..n).for_each(|_| {
-            let ((s, a), (r, ns)) = model.iter().choose(&mut rng).unwrap();
-            let s_a_id = get_state_action_id(s, a);
-            let current_s_a_value = state_action_values.get(&s_a_id).unwrap_or(&0.0);
-            let ns = match state_map.get(ns) {
-                None => panic!("state {} not found", ns),
-                Some(s) => s.clone(),
+        while !state.is_terminal() {
+            let action = match policy.select_action_for_state(&state.get_id()) {
+                Ok(a) => a,
+                Err(_) => state.get_actions().iter().choose(&mut rng).unwrap().clone(),
             };
-            let (best_ns_value, best_ns_action) =
-                get_max_value_of_state_actions(&state_action_values, &ns)
+
+            let state_action_id = get_state_action_id(&state.get_id(), &action);
+            let (reward, next_state) = state.take_action(&action);
+            let current_state_action_value =
+                state_action_values.get(&state_action_id).unwrap_or(&0.0);
+            let next_state_best_action_value =
+                get_max_value_of_state_actions(&state_action_values, &next_state)
                     .unwrap_or((0.0, String::new()));
-            let new_s_a_value = current_s_a_value
-                + (size_step_parameter * (r + (discount_rate * best_ns_value) - current_s_a_value));
-            state_action_values.insert(s_a_id.clone(), new_s_a_value);
-            if best_ns_action != "" {
-                policy.set_actions_for_state(
-                    ns.get_id(),
-                    ns.get_actions().clone(),
-                    best_ns_action.clone(),
-                );
+            let new_state_action_value = current_state_action_value
+                + (size_step_parameter
+                    * (reward + (discount_rate * next_state_best_action_value.0)
+                        - current_state_action_value));
+            state_action_values.insert(state_action_id.clone(), new_state_action_value);
+            model.insert(
+                (state.get_id(), action),
+                (new_state_action_value, next_state.get_id()),
+            );
+
+            if episode_count != 0 {
+                (0..n).for_each(|_| {
+                    let ((s, a), (r, ns)) = model.iter().choose(&mut rng).unwrap();
+                    let s_a_id = get_state_action_id(s, a);
+                    let current_s_a_value = state_action_values.get(&s_a_id).unwrap_or(&0.0);
+                    let ns = match state_map.get(ns) {
+                        None => panic!("state {} not found", ns),
+                        Some(s) => s.clone(),
+                    };
+                    let (best_ns_value, best_ns_action) =
+                        get_max_value_of_state_actions(&state_action_values, &ns)
+                            .unwrap_or((0.0, String::new()));
+                    let new_s_a_value = current_s_a_value
+                        + (size_step_parameter
+                            * (r + (discount_rate * best_ns_value) - current_s_a_value));
+                    state_action_values.insert(s_a_id.clone(), new_s_a_value);
+                    if best_ns_action != "" {
+                        policy.set_actions_for_state(
+                            ns.get_id(),
+                            ns.get_actions().clone(),
+                            best_ns_action.clone(),
+                        );
+                    }
+                });
             }
-        });
+
+            state = next_state;
+        }
     });
 
     policy
@@ -106,7 +114,7 @@ mod tests {
             .filter(|s| !wall_ids.contains(&s.id))
             .collect();
 
-        let policy = tabular_dyna_q(100000, states, 0.9, 0.1, 50);
+        let policy = tabular_dyna_q(10, states, 0.5, 0.1, 5);
         let determ = policy.to_deterministic_policy();
 
         (0..6).for_each(|row| {
@@ -116,13 +124,15 @@ mod tests {
                     print!("#");
                     return;
                 }
-                let action = determ.select_action_for_state(&id).unwrap();
+                let action = determ
+                    .select_action_for_state(&id)
+                    .unwrap_or(String::from(" "));
                 let char = match action.as_str() {
                     "left" => "<",
                     "right" => ">",
                     "up" => "^",
                     "down" => "v",
-                    _ => panic!("Invalid action"),
+                    _ => " ",
                 };
                 print!("{}", char);
             });
