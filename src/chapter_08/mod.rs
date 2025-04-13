@@ -74,6 +74,8 @@ pub fn tabular_dyna_q<S: State>(
     policy
 }
 
+
+
 fn get_max_value_of_state_actions<S: State>(
     state_action_values: &HashMap<String, f64>,
     state: &S,
@@ -102,6 +104,8 @@ fn get_state_action_id(state_id: &str, action_id: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use plotters::prelude::{BLUE, RED};
+    use crate::service::{LineChartBuilder, LineChartData};
     use super::*;
 
     #[test]
@@ -253,5 +257,60 @@ mod tests {
             let new_state = TestState::new(new_row, new_col);
             (reward, new_state)
         }
+    }
+
+    #[test]
+    fn figure_8_7() {
+        // let branching_factors = vec![2, 10, 100, 1000, 10_000];
+        let branching_factors = vec![1000];
+        let max_computations = 10_000; // Maximum computations for the x-axis
+
+        let mut chart = LineChartBuilder::new();
+        chart.set_title("Expected updates vs. sample updates".to_string());
+        chart.set_x_label("Number of computations".to_string());
+        chart.set_y_label("Error".to_string());
+        chart.set_size(1200, 900);
+        chart.add_graph_margin(0.1);
+        chart.set_path(std::path::PathBuf::from("output/chapter8/figure 8.7.png"));
+
+        // Plot each branching factor
+        for &b in &branching_factors {
+            let expected_updates: Vec<(f32, f32)> = (1..=max_computations)
+                .map(|t| {
+                    if t < b {
+                        (t as f32, 1.0) // Error stays the same until the expected update is complete
+                    } else {
+                        (t as f32, 0.0) // Error drops to 0 after the expected update
+                    }
+                })
+                .collect();
+
+            let sample_updates: Vec<(f32, f32)> = (1..=max_computations)
+                .map(|t| {
+                    let error = if t == 0 {
+                        1.0 // Initial error
+                    } else {
+                        ((b - 1) as f64 / (b as f64 * t as f64)).sqrt()
+                    };
+                    (t as f32, error as f32)
+                })
+                .collect();
+
+            let expected_data = LineChartData::new(
+                format!("Expected updates (b={})", b),
+                expected_updates,
+                BLUE.into(),
+            );
+
+            let sample_data = LineChartData::new(
+                format!("Sample updates (b={})", b),
+                sample_updates,
+                RED.into(),
+            );
+
+            chart.add_data(expected_data);
+            chart.add_data(sample_data);
+        }
+        chart.create_chart().unwrap();
     }
 }
