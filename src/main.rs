@@ -2,10 +2,10 @@ use eframe::egui;
 use egui::Ui;
 use rand::prelude::{IndexedRandom, IteratorRandom};
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
+use simple_chess::codec::forsyth_edwards_notation::{build_game_from_string, encode_game_as_string};
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
-use ReinforcementLearning::attempts_at_framework::v1::agent::{NStepSarsa, QLearning};
+use ReinforcementLearning::attempts_at_framework::v1::agent::{get_best_action, NStepSarsa, QLearning};
 use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 
@@ -138,22 +138,32 @@ impl MyApp {
     }
 
     fn select_and_make_move(&self, legal_moves: &Vec<ChessMoveType>) -> (ChessMoveType, bool) {
+        // let game_as_fen_string = encode_game_as_string(&self.chess_game);
+        // let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
+        // match self.policy_for_black.select_action_for_state(&new_state_id) {
+        //     Ok(a) => (
+        //         legal_moves
+        //             .iter()
+        //             .find(|m| encode_move_as_long_algebraic_notation(m) == a)
+        //             .unwrap()
+        //             .clone(),
+        //         true,
+        //     ),
+        //     Err(_) => {
+        //         let mut rng = rand::rng();
+        //         (legal_moves.choose(&mut rng).unwrap().clone(), false)
+        //     }
+        // }
+
         let game_as_fen_string = encode_game_as_string(&self.chess_game);
-        let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
-        match self.policy_for_black.select_action_for_state(&new_state_id) {
-            Ok(a) => (
-                legal_moves
-                    .iter()
-                    .find(|m| encode_move_as_long_algebraic_notation(m) == a)
-                    .unwrap()
-                    .clone(),
-                true,
-            ),
-            Err(_) => {
-                let mut rng = rand::rng();
-                (legal_moves.choose(&mut rng).unwrap().clone(), false)
-            }
-        }
+        let idk_game = build_game_from_string(&game_as_fen_string).unwrap();
+        let next_move = get_best_action(idk_game, 1);
+        let nm = legal_moves
+            .iter()
+            .find(|m| encode_move_as_long_algebraic_notation(m) == next_move)
+            .unwrap()
+            .clone();
+        (nm, true)
     }
 
     fn select_piece_to_move(&mut self, row: usize, col: usize) {
