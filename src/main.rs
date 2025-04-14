@@ -156,7 +156,7 @@ impl MyApp {
         // }
 
         let mut game = self.chess_game.clone();
-        let next_move = get_best_action(&mut game, 2);
+        let next_move = get_best_action(&mut game, 1);
         let nm = legal_moves
             .iter()
             .find(|m| encode_move_as_long_algebraic_notation(m) == next_move)

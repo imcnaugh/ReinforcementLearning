@@ -127,7 +127,6 @@ mod tests {
     use plotters::prelude::{BLUE, GREEN, RED};
     use std::cell::RefCell;
     use std::collections::HashMap;
-    use std::os::macos::raw::stat;
     use std::path::PathBuf;
     use std::sync::atomic::AtomicUsize;
 
