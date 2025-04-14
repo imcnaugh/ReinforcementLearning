@@ -155,9 +155,7 @@ impl MyApp {
         //     }
         // }
 
-        let game_as_fen_string = encode_game_as_string(&self.chess_game);
-        let idk_game = build_game_from_string(&game_as_fen_string).unwrap();
-        let next_move = get_best_action(idk_game, 1);
+        let next_move = get_best_action(&self.chess_game, 2);
         let nm = legal_moves
             .iter()
             .find(|m| encode_move_as_long_algebraic_notation(m) == next_move)

@@ -1,8 +1,9 @@
+use rayon::prelude::*;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::{ChessGame, ChessMoveType, Color};
 use simple_chess::piece::{ChessPiece, PieceType};
 
-pub fn get_best_action(game: ChessGame, depth: usize) -> String {
+pub fn get_best_action(game: &ChessGame, depth: usize) -> String {
     let mut game = game.clone();
     let moves = match game.get_game_state() {
         GameState::InProgress { legal_moves, .. } => legal_moves,
@@ -11,21 +12,23 @@ pub fn get_best_action(game: ChessGame, depth: usize) -> String {
         GameState::Stalemate => Vec::new(),
     };
 
-    let idk = moves.iter().map(|&m| {
+    let idk = moves.par_iter().map(|&m| {
+        let mut game = game.clone();
         let move_as_string = simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(&m);
         let mut interim_game = game.clone();
         interim_game.make_move(m);
-        let new_state = interim_game.get_game_state();
-        let value: f64 = match new_state {
+        let value: f64 = match interim_game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => {
-                get_average_value_of_possible_moves(depth, game.clone(), legal_moves)
+                get_average_value_of_possible_moves(depth, &mut game, legal_moves)
             }
             GameState::Check { legal_moves, .. } => {
-                get_average_value_of_possible_moves(depth, game.clone(), legal_moves)
+                get_average_value_of_possible_moves(depth, &mut game, legal_moves)
             }
             GameState::Checkmate { .. } => 1000.0,
             GameState::Stalemate => 0.0,
         };
+
+        println!("{}: {}", move_as_string, value);
 
         (move_as_string, value)
     }).max_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
@@ -33,27 +36,23 @@ pub fn get_best_action(game: ChessGame, depth: usize) -> String {
     idk.0.clone()
 }
 
-fn get_average_value_of_possible_moves(depth: usize, mut game: ChessGame, legal_moves: Vec<ChessMoveType>) -> f64 {
+fn get_average_value_of_possible_moves(depth: usize, game: &mut ChessGame, legal_moves: Vec<ChessMoveType>) -> f64 {
     let s = legal_moves.iter().map(|nm| {
         let mut interim_game = game.clone();
         interim_game.make_move(*nm);
-        idk(interim_game, depth, game.get_current_players_turn().opposite())
+        idk(&mut interim_game, depth, game.get_current_players_turn().opposite())
     }).sum::<f64>();
     s / legal_moves.len() as f64
 }
 
-fn idk(game: ChessGame, depth: usize, player_color: Color) -> f64 {
+fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> f64 {
     if depth == 0 {
         return 0.0;
     }
     let players_turn = game.get_current_players_turn() == player_color;
 
-    let next_depth = match players_turn {
-        true => depth - 1,
-        false => depth
-    };
+    let next_depth = depth - 1;
 
-    let mut game = game.clone();
     let moves = match game.get_game_state() {
         GameState::InProgress { legal_moves, .. } => legal_moves,
         GameState::Check { legal_moves, .. } => legal_moves,
@@ -80,7 +79,7 @@ fn idk(game: ChessGame, depth: usize, player_color: Color) -> f64 {
                 let s = legal_moves.iter().map(|nm| {
                     let mut interim_game = game.clone();
                     interim_game.make_move(*nm);
-                    idk(interim_game, next_depth, player_color)
+                    idk(&mut interim_game, next_depth, player_color)
                 }).sum::<f64>();
                 s / legal_moves.len() as f64
             }
@@ -88,7 +87,7 @@ fn idk(game: ChessGame, depth: usize, player_color: Color) -> f64 {
                 let s = legal_moves.iter().map(|nm| {
                     let mut interim_game = game.clone();
                     interim_game.make_move(*nm);
-                    idk(interim_game, next_depth, player_color)
+                    idk(&mut interim_game, next_depth, player_color)
                 }).sum::<f64>();
                 s / legal_moves.len() as f64
             }
