@@ -1,10 +1,10 @@
-use rayon::prelude::*;
+use std::cmp::Ordering;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::{ChessGame, ChessMoveType, Color};
+use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::piece::{ChessPiece, PieceType};
 
-pub fn get_best_action(game: &ChessGame, depth: usize) -> String {
-    let mut game = game.clone();
+pub fn get_best_action(game: &mut ChessGame, depth: usize) -> String {
     let moves = match game.get_game_state() {
         GameState::InProgress { legal_moves, .. } => legal_moves,
         GameState::Check { legal_moves, .. } => legal_moves,
@@ -12,46 +12,47 @@ pub fn get_best_action(game: &ChessGame, depth: usize) -> String {
         GameState::Stalemate => Vec::new(),
     };
 
-    let idk = moves.par_iter().map(|&m| {
-        let mut game = game.clone();
+    let idk = moves.iter().map(|&m| {
         let move_as_string = simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(&m);
-        let mut interim_game = game.clone();
-        interim_game.make_move(m);
-        let value: f64 = match interim_game.get_game_state() {
+        game.make_move(m);
+        let value: f64 = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => {
-                get_average_value_of_possible_moves(depth, &mut game, legal_moves)
+                get_average_value_of_possible_moves(depth, game, legal_moves)
             }
             GameState::Check { legal_moves, .. } => {
-                get_average_value_of_possible_moves(depth, &mut game, legal_moves)
+                get_average_value_of_possible_moves(depth, game, legal_moves)
             }
             GameState::Checkmate { .. } => 1000.0,
             GameState::Stalemate => 0.0,
         };
 
-        println!("{}: {}", move_as_string, value);
+        game.undo_last_move();
 
         (move_as_string, value)
-    }).max_by(|a, b| a.1.partial_cmp(&b.1).unwrap()).unwrap();
+    }).max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(Ordering::Equal)).unwrap();
 
     idk.0.clone()
 }
 
 fn get_average_value_of_possible_moves(depth: usize, game: &mut ChessGame, legal_moves: Vec<ChessMoveType>) -> f64 {
+    if depth == 0 {
+        return 0.0;
+    }
+
+    let board_as_fen_string = encode_game_as_string(&game);
+    // println!("finding best action for board state: {} and depth: {}", board_as_fen_string, depth);
     let s = legal_moves.iter().map(|nm| {
-        let mut interim_game = game.clone();
-        interim_game.make_move(*nm);
-        idk(&mut interim_game, depth, game.get_current_players_turn().opposite())
+        let move_as_string = simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(&nm);
+        game.make_move(*nm);
+        let value = idk(game, depth, game.get_current_players_turn().opposite());
+        game.undo_last_move();
+        value
     }).sum::<f64>();
     s / legal_moves.len() as f64
 }
 
 fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> f64 {
-    if depth == 0 {
-        return 0.0;
-    }
     let players_turn = game.get_current_players_turn() == player_color;
-
-    let next_depth = depth - 1;
 
     let moves = match game.get_game_state() {
         GameState::InProgress { legal_moves, .. } => legal_moves,
@@ -61,37 +62,21 @@ fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> f64 {
     };
 
     moves.iter().map(|m| {
-        let mut interim_game = game.clone();
-        interim_game.make_move(*m);
-        let mut base_reward = 0.0;
-        match m {
-            ChessMoveType::Move { taken_piece, .. } => {
-                base_reward += get_taken_piece_reward(players_turn, taken_piece);
-            }
-            ChessMoveType::EnPassant { taken_piece, .. } => {
-                base_reward += get_taken_piece_reward(players_turn, &Some(*taken_piece));
-            }
-            ChessMoveType::Castle { .. } => {}
-        }
+        game.make_move(*m);
+        let take_reward= match m {
+            ChessMoveType::Move { taken_piece, .. } => get_taken_piece_reward(players_turn, taken_piece),
+            ChessMoveType::EnPassant { .. } => 1.0,
+            ChessMoveType::Castle { .. } => 0.0,
+        };
 
-        let continuing_reward = match interim_game.get_game_state() {
+        let continuing_reward = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => {
-                let s = legal_moves.iter().map(|nm| {
-                    let mut interim_game = game.clone();
-                    interim_game.make_move(*nm);
-                    idk(&mut interim_game, next_depth, player_color)
-                }).sum::<f64>();
-                s / legal_moves.len() as f64
+                get_average_value_of_possible_moves(depth - 1, game, legal_moves)
             }
             GameState::Check { legal_moves, .. } => {
-                let s = legal_moves.iter().map(|nm| {
-                    let mut interim_game = game.clone();
-                    interim_game.make_move(*nm);
-                    idk(&mut interim_game, next_depth, player_color)
-                }).sum::<f64>();
-                s / legal_moves.len() as f64
+                get_average_value_of_possible_moves(depth - 1, game, legal_moves)
             }
-            GameState::Checkmate { winner } => {
+            GameState::Checkmate { .. } => {
                 if players_turn {
                     1000.0
                 } else {
@@ -100,8 +85,8 @@ fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> f64 {
             },
             GameState::Stalemate => 0.0
         };
-
-        base_reward + continuing_reward
+        game.undo_last_move();
+        take_reward + continuing_reward
     }).sum::<f64>() / moves.len() as f64
 }
 
