@@ -61,7 +61,11 @@ fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> Vec<(f64, Str
                 v.iter().map(|a|a.0).reduce(x).unwrap()
             }
             GameState::Checkmate { .. } => {
-                1000.0
+                if player_color == game.get_current_players_turn() {
+                    -1000.0
+                } else {
+                    1000.0
+                }
             },
             GameState::Stalemate => 0.0
         };
