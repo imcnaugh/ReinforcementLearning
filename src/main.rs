@@ -1,4 +1,5 @@
 use eframe::egui;
+use egui::debug_text::print;
 use egui::Ui;
 use rand::prelude::{IndexedRandom, IteratorRandom};
 use simple_chess::chess_game_state_analyzer::GameState;
@@ -35,6 +36,7 @@ struct MyApp {
     last_move_made_on_policy_string: Option<String>,
     agent: Box<NStepSarsa>,
     num_episodes_to_learn_for: usize,
+    heuristic_depth: usize,
 }
 
 impl MyApp {
@@ -52,6 +54,7 @@ impl MyApp {
             last_move_made_on_policy_string: None,
             agent: Box::new(NStepSarsa::new(100, 0.5, 0.2, 1.0)),
             num_episodes_to_learn_for: 0,
+            heuristic_depth: 1,
         }
     }
 
@@ -155,8 +158,10 @@ impl MyApp {
         //     }
         // }
 
+        println!("selecting move with a heuristic depth of: {}", self.heuristic_depth);
+
         let mut game = self.chess_game.clone();
-        let next_move = get_best_action(&mut game, 2);
+        let next_move = get_best_action(&mut game, self.heuristic_depth);
         let nm = legal_moves
             .iter()
             .find(|m| encode_move_as_long_algebraic_notation(m) == next_move)
@@ -308,6 +313,20 @@ impl MyApp {
         });
     }
 
+    fn depth_display(&mut self, ui: &mut Ui) {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.label("Heuristic Depth:");
+                let mut shown_depth = self.heuristic_depth.to_string();
+                if ui.text_edit_singleline(&mut shown_depth).changed() {
+                    if let Ok(num) = shown_depth.parse::<u32>() {
+                        self.heuristic_depth = num as usize;
+                    }
+                }
+            })
+        });
+    }
+
     fn learn_button(&mut self, ui: &mut Ui) {
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
@@ -385,7 +404,8 @@ impl eframe::App for MyApp {
                     );
                     ui.add_space(10.0);
                     self.reset_game_button(ui);
-                    self.learn_button(ui);
+                    // self.learn_button(ui);
+                    self.depth_display(ui);
                     ui.add_space(10.0);
                     self.previous_moves(ui);
                 });

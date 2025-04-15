@@ -1,7 +1,6 @@
 use std::cmp::Ordering;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::{ChessGame, ChessMoveType, Color};
-use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::piece::{ChessPiece, PieceType};
 
 pub fn get_best_action(game: &mut ChessGame, depth: usize) -> String {
@@ -39,10 +38,7 @@ fn get_average_value_of_possible_moves(depth: usize, game: &mut ChessGame, legal
         return 0.0;
     }
 
-    let board_as_fen_string = encode_game_as_string(&game);
-    // println!("finding best action for board state: {} and depth: {}", board_as_fen_string, depth);
     let s = legal_moves.iter().map(|nm| {
-        let move_as_string = simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation(&nm);
         game.make_move(*nm);
         let value = idk(game, depth, game.get_current_players_turn().opposite());
         game.undo_last_move();
