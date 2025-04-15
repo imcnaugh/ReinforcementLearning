@@ -1,14 +1,12 @@
 use eframe::egui;
-use egui::debug_text::print;
 use egui::Ui;
-use rand::prelude::{IndexedRandom, IteratorRandom};
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::codec::forsyth_edwards_notation::{build_game_from_string, encode_game_as_string};
+use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
-use ReinforcementLearning::attempts_at_framework::v1::agent::{get_best_action, NStepSarsa, QLearning};
-use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
-use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
+use ReinforcementLearning::attempts_at_framework::v1::agent::{get_best_action, NStepSarsa};
+use ReinforcementLearning::attempts_at_framework::v1::policy::DeterministicPolicy;
+use ReinforcementLearning::chess_state::ChessState;
 
 fn main() {
     let options = eframe::NativeOptions {
