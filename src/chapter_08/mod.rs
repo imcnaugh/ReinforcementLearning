@@ -74,8 +74,6 @@ pub fn tabular_dyna_q<S: State>(
     policy
 }
 
-
-
 fn get_max_value_of_state_actions<S: State>(
     state_action_values: &HashMap<String, f64>,
     state: &S,
@@ -104,9 +102,9 @@ fn get_state_action_id(state_id: &str, action_id: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use plotters::prelude::{BLUE, RED};
-    use crate::service::{LineChartBuilder, LineChartData};
     use super::*;
+    use crate::service::{LineChartBuilder, LineChartData};
+    use plotters::prelude::{BLUE, RED};
 
     #[test]
     fn figure_8_2() {

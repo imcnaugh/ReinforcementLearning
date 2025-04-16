@@ -1,7 +1,7 @@
 use rand::prelude::IteratorRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::{ChessGame, ChessMoveType, Color};
 use simple_chess::piece::{ChessPiece, PieceType};
+use simple_chess::{ChessGame, ChessMoveType, Color};
 
 pub fn get_best_action(game: &mut ChessGame, depth: usize) -> String {
     let player_color = game.get_current_players_turn();
@@ -12,7 +12,12 @@ pub fn get_best_action(game: &mut ChessGame, depth: usize) -> String {
     let max_value = idk.iter().map(|x| x.0).fold(f64::MIN, f64::max);
     let best_moves: Vec<_> = idk.iter().filter(|x| x.0 == max_value).cloned().collect();
 
-    best_moves.iter().choose(&mut rand::rng()).unwrap().1.clone()
+    best_moves
+        .iter()
+        .choose(&mut rand::rng())
+        .unwrap()
+        .1
+        .clone()
 }
 
 fn idk(game: &mut ChessGame, depth: usize, player_color: Color) -> Vec<(f64, String)> {

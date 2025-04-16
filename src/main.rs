@@ -156,7 +156,10 @@ impl MyApp {
         //     }
         // }
 
-        println!("selecting move with a heuristic depth of: {}", self.heuristic_depth);
+        println!(
+            "selecting move with a heuristic depth of: {}",
+            self.heuristic_depth
+        );
 
         let mut game = self.chess_game.clone();
         let next_move = get_best_action(&mut game, self.heuristic_depth);
