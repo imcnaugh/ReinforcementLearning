@@ -29,40 +29,50 @@ pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
     policy: P,
     discount_rate: f64,
     learning_rate: f64,
-) {
-    let mut current_state = starting_state;
-    let mut weights = vec![0.0];
+    episode_count: usize,
+) -> Vec<f64> {
+    let mut weights = vec![0.0; starting_state.get_values().len()];
 
-    while !current_state.is_terminal() {
-        let action = match policy.select_action_for_state(&current_state.get_id()) {
-            Ok(a) => a,
-            Err(_) => current_state
-                .get_actions()
-                .iter()
-                .choose(&mut rand::rng())
-                .unwrap()
-                .clone(),
-        };
+    (0..episode_count).for_each(|_| {
+        let mut current_state = starting_state.clone();
+        while !current_state.is_terminal() {
+            let action = match policy.select_action_for_state(&current_state.get_id()) {
+                Ok(a) => a,
+                Err(_) => current_state
+                    .get_actions()
+                    .iter()
+                    .choose(&mut rand::rng())
+                    .unwrap()
+                    .clone(),
+            };
 
-        let (reward, next_state) = current_state.take_action(&action);
-        let new_state_value = linear_differentiable_function(&next_state.get_values(), &weights);
-        let expected = reward + (discount_rate * new_state_value);
+            let (reward, next_state) = current_state.take_action(&action);
 
-        let new_weights = weight_update(
-            &current_state.get_values(),
-            &weights,
-            learning_rate,
-            expected,
-        );
-        weights = new_weights;
+            // println!("current: {}, action: {}, reward: {}, next: {}", current_state.get_id(), action, reward, next_state.get_id());
 
-        current_state = next_state;
-    }
+            let new_state_value =
+                linear_differentiable_function(&next_state.get_values(), &weights);
+            let expected = reward + (discount_rate * new_state_value);
+
+            let new_weights = weight_update(
+                &current_state.get_values(),
+                &weights,
+                learning_rate,
+                expected,
+            );
+            weights = new_weights;
+
+            current_state = next_state;
+        }
+    });
+
+    weights
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::attempts_at_framework::v1::policy::RandomPolicy;
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::ShapeStyle;
     use plotters::style::BLUE;
@@ -146,5 +156,88 @@ mod tests {
         chart_builder.add_data(data_as_line);
 
         chart_builder.create_chart().unwrap()
+    }
+
+    #[test]
+    fn thousand_step_walk() {
+        let starting_state = HundredStepState::new(50);
+
+        let learned_weights = semi_gradient_td0_single_weight(
+            starting_state,
+            RandomPolicy::new(),
+            1.0,
+            0.00002,
+            1000,
+        );
+
+        let data_points = (0..100)
+            .map(|i| {
+                let state = HundredStepState::new(i);
+                let value = linear_differentiable_function(&state.get_values(), &learned_weights);
+                (i as f32, value as f32)
+            })
+            .collect();
+
+        println!("learned weights: {:?}", learned_weights);
+
+        let mut line_chart_builder = LineChartBuilder::new();
+        line_chart_builder.set_path(PathBuf::from("output/chapter9/hundred_step_walk.png"));
+        line_chart_builder.set_title("hundred step walk".to_string());
+        line_chart_builder.set_x_label("Step".to_string());
+        line_chart_builder.set_y_label("Value".to_string());
+        line_chart_builder.add_data(LineChartData::new(
+            "state values".to_string(),
+            data_points,
+            ShapeStyle::from(&BLUE),
+        ));
+
+        line_chart_builder.create_chart().unwrap();
+    }
+
+    #[derive(Clone, Debug)]
+    struct HundredStepState {
+        id: i32,
+    }
+
+    impl HundredStepState {
+        fn new(id: i32) -> Self {
+            Self { id }
+        }
+    }
+
+    impl State for HundredStepState {
+        fn get_id(&self) -> String {
+            self.id.to_string()
+        }
+
+        fn get_actions(&self) -> Vec<String> {
+            (-10..10).map(|i| i.to_string()).collect()
+        }
+
+        fn is_terminal(&self) -> bool {
+            if self.id < 0 || self.id > 100 {
+                true
+            } else {
+                false
+            }
+        }
+
+        fn take_action(&self, action: &str) -> (f64, Self) {
+            let diff: i32 = action.parse().unwrap();
+            let new_id = self.id + diff;
+            let new_state = HundredStepState::new(new_id);
+            let reward = if new_id < 0 {
+                -1.0
+            } else if new_id > 100 {
+                1.0
+            } else {
+                0.0
+            };
+            (reward, new_state)
+        }
+
+        fn get_values(&self) -> Vec<f64> {
+            vec![self.id as f64]
+        }
     }
 }
