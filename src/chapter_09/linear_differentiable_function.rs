@@ -1,27 +1,72 @@
+use crate::attempts_at_framework::v1::policy::Policy;
+use crate::attempts_at_framework::v2::state::State;
+use rand::prelude::IteratorRandom;
+
 pub fn linear_differentiable_function(values: &Vec<f64>, weights: &Vec<f64>) -> f64 {
     assert_eq!(values.len(), weights.len());
-    (0..values.len()).fold(0.0, |acc, index| {
-        acc + (values[index] * weights[index])
-    })
+    (0..values.len()).fold(0.0, |acc, index| acc + (values[index] * weights[index]))
 }
 
-pub fn weight_update(values: &Vec<f64>, weights: &Vec<f64>, learning_rate: f64, expected_value: f64) -> Vec<f64> {
+pub fn weight_update(
+    values: &Vec<f64>,
+    weights: &Vec<f64>,
+    learning_rate: f64,
+    expected_value: f64,
+) -> Vec<f64> {
     assert_eq!(values.len(), weights.len());
     let current_value = linear_differentiable_function(values, weights);
     let error = expected_value - current_value;
     let gradient = error * learning_rate;
-    values.iter().enumerate().map(|(index, value)| {
-        weights[index] + (gradient * value)
-    }).collect()
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| weights[index] + (gradient * value))
+        .collect()
+}
+
+pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
+    starting_state: S,
+    policy: P,
+    discount_rate: f64,
+    learning_rate: f64,
+) {
+    let mut current_state = starting_state;
+    let mut weights = vec![0.0];
+
+    while !current_state.is_terminal() {
+        let action = match policy.select_action_for_state(&current_state.get_id()) {
+            Ok(a) => a,
+            Err(_) => current_state
+                .get_actions()
+                .iter()
+                .choose(&mut rand::rng())
+                .unwrap()
+                .clone(),
+        };
+
+        let (reward, next_state) = current_state.take_action(&action);
+        let new_state_value = linear_differentiable_function(&next_state.get_values(), &weights);
+        let expected = reward + (discount_rate * new_state_value);
+
+        let new_weights = weight_update(
+            &current_state.get_values(),
+            &weights,
+            learning_rate,
+            expected,
+        );
+        weights = new_weights;
+
+        current_state = next_state;
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use super::*;
+    use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::ShapeStyle;
     use plotters::style::BLUE;
-    use crate::service::{LineChartBuilder, LineChartData};
-    use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn test_simple_case() {
@@ -50,7 +95,10 @@ mod tests {
             count += 1;
         }
 
-        println!("weights: {:?}, converged after: {} iterations", weights, count);
+        println!(
+            "weights: {:?}, converged after: {} iterations",
+            weights, count
+        );
     }
 
     #[test]
@@ -63,7 +111,9 @@ mod tests {
 
         let mut chart_builder = LineChartBuilder::new();
         chart_builder
-            .set_path(PathBuf::from("output/chapter9/learning_rates_and_linear_regression_convergence.png"))
+            .set_path(PathBuf::from(
+                "output/chapter9/learning_rates_and_linear_regression_convergence.png",
+            ))
             .set_title("Learning rates vs iterations to convergence".to_string())
             .set_x_label("Learning rate".to_string())
             .set_y_label("Iterations to convergence".to_string());
@@ -84,7 +134,10 @@ mod tests {
                 count += 1;
             }
 
-            println!("learning rate: {}, weights: {:?}, converged after: {} iterations",learning_rate, weights, count);
+            println!(
+                "learning rate: {}, weights: {:?}, converged after: {} iterations",
+                learning_rate, weights, count
+            );
 
             data.push((learning_rate as f32, count as f32));
         }
