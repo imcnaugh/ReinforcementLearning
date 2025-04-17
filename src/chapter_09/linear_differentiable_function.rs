@@ -74,7 +74,7 @@ mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
     use crate::service::{LineChartBuilder, LineChartData};
-    use plotters::prelude::ShapeStyle;
+    use plotters::prelude::{ShapeStyle, RED};
     use plotters::style::BLUE;
     use std::path::PathBuf;
 
@@ -167,7 +167,7 @@ mod tests {
             RandomPolicy::new(),
             1.0,
             0.00002,
-            100000,
+            1000000,
         );
 
         let data_points = (0..1000)
@@ -187,6 +187,11 @@ mod tests {
         line_chart_builder.set_title("thousand state random walk".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
+        line_chart_builder.add_data(LineChartData::new(
+            "Expected".to_string(),
+            vec![(0.0, -1.0), (1000.0, 1.0)],
+            ShapeStyle::from(&RED),
+        ));
         line_chart_builder.add_data(LineChartData::new(
             "state values".to_string(),
             data_points,
