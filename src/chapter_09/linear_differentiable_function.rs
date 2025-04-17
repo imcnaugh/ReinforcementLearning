@@ -4,7 +4,7 @@ use rand::prelude::IteratorRandom;
 
 pub fn linear_differentiable_function(values: &Vec<f64>, weights: &Vec<f64>) -> f64 {
     assert_eq!(values.len(), weights.len());
-    (0..values.len()).fold(0.0, |acc, index| acc + (values[index] * weights[index]))
+    values.iter().zip(weights).map(|(v, w)| v * w).sum()
 }
 
 pub fn weight_update(
@@ -19,8 +19,8 @@ pub fn weight_update(
     let gradient = error * learning_rate;
     values
         .iter()
-        .enumerate()
-        .map(|(index, value)| weights[index] + (gradient * value))
+        .zip(weights)
+        .map(|(value, weight)| weight + (gradient * value))
         .collect()
 }
 
@@ -167,7 +167,7 @@ mod tests {
             RandomPolicy::new(),
             1.0,
             0.00002,
-            1000000,
+            100000,
         );
 
         let data_points = (0..1000)
@@ -244,7 +244,7 @@ mod tests {
         }
 
         fn get_values(&self) -> Vec<f64> {
-           let index = (self.id / 100).clamp(0, 9) as usize;
+            let index = (self.id / 100).clamp(0, 9) as usize;
             let mut res_vec = vec![0.0; 10];
             res_vec[index] = 1.0;
             res_vec
