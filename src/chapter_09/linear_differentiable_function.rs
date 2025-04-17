@@ -184,8 +184,8 @@ mod tests {
         line_chart_builder.set_path(PathBuf::from(
             "output/chapter9/thousand_state_random_walk.png",
         ));
-        line_chart_builder.set_title("hundred step walk".to_string());
-        line_chart_builder.set_x_label("Step".to_string());
+        line_chart_builder.set_title("thousand state random walk".to_string());
+        line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
             "state values".to_string(),
@@ -239,7 +239,10 @@ mod tests {
         }
 
         fn get_values(&self) -> Vec<f64> {
-            vec![self.id as f64]
+           let index = (self.id / 100).clamp(0, 9) as usize;
+            let mut res_vec = vec![0.0; 10];
+            res_vec[index] = 1.0;
+            res_vec
         }
     }
 }
