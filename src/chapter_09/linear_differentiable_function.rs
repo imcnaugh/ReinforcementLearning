@@ -160,17 +160,17 @@ mod tests {
 
     #[test]
     fn thousand_step_walk() {
-        let starting_state = HundredStepState::new(50);
+        let starting_state = HundredStepState::new(500);
 
         let learned_weights = semi_gradient_td0_single_weight(
             starting_state,
             RandomPolicy::new(),
             1.0,
             0.00002,
-            1000,
+            100000,
         );
 
-        let data_points = (0..100)
+        let data_points = (0..1000)
             .map(|i| {
                 let state = HundredStepState::new(i);
                 let value = linear_differentiable_function(&state.get_values(), &learned_weights);
@@ -181,7 +181,9 @@ mod tests {
         println!("learned weights: {:?}", learned_weights);
 
         let mut line_chart_builder = LineChartBuilder::new();
-        line_chart_builder.set_path(PathBuf::from("output/chapter9/hundred_step_walk.png"));
+        line_chart_builder.set_path(PathBuf::from(
+            "output/chapter9/thousand_state_random_walk.png",
+        ));
         line_chart_builder.set_title("hundred step walk".to_string());
         line_chart_builder.set_x_label("Step".to_string());
         line_chart_builder.set_y_label("Value".to_string());
@@ -211,11 +213,11 @@ mod tests {
         }
 
         fn get_actions(&self) -> Vec<String> {
-            (-10..10).map(|i| i.to_string()).collect()
+            (-100..100).map(|i| i.to_string()).collect()
         }
 
         fn is_terminal(&self) -> bool {
-            if self.id < 0 || self.id > 100 {
+            if self.id < 0 || self.id > 1000 {
                 true
             } else {
                 false
@@ -228,7 +230,7 @@ mod tests {
             let new_state = HundredStepState::new(new_id);
             let reward = if new_id < 0 {
                 -1.0
-            } else if new_id > 100 {
+            } else if new_id > 1000 {
                 1.0
             } else {
                 0.0
