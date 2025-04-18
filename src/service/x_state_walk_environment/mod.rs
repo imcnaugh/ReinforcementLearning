@@ -88,19 +88,24 @@ impl WalkStateFactory {
             .collect();
         let new_id = id.clamp(0, self.number_of_states as i32 - 1) as usize;
 
-        let mut groups = vec![0.0; self.number_of_states / self.group_size];
-        let group_id = new_id / self.group_size;
-        groups[group_id] = 1.0;
+        let values = self.state_aggregation_values_for_state_id(new_id);
 
         let new_state = WalkState {
             id: new_id,
             factory: self,
             actions,
-            values: groups,
+            values,
             is_terminal,
         };
 
         (reward, new_state)
+    }
+
+    fn state_aggregation_values_for_state_id(&self, new_id: usize) -> Vec<f64> {
+        let mut groups = vec![0.0; self.number_of_states / self.group_size];
+        let group_id = new_id / self.group_size;
+        groups[group_id] = 1.0;
+        groups
     }
 }
 

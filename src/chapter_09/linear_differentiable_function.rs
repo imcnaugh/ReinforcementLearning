@@ -60,8 +60,8 @@ pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
                 learning_rate,
                 expected,
             );
-            weights = new_weights;
 
+            weights = new_weights;
             current_state = next_state;
         }
     });
@@ -188,7 +188,7 @@ mod tests {
         line_chart_builder.set_path(PathBuf::from(
             "output/chapter9/thousand_state_random_walk.png",
         ));
-        line_chart_builder.set_title("thousand state random walk".to_string());
+        line_chart_builder.set_title("Thousand state random walk".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
@@ -197,7 +197,7 @@ mod tests {
             ShapeStyle::from(&RED),
         ));
         line_chart_builder.add_data(LineChartData::new(
-            "state values".to_string(),
+            "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),
         ));
