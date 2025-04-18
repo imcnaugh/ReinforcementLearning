@@ -73,6 +73,7 @@ pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
 mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
+    use crate::service::x_state_walk_environment::WalkStateFactory;
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, RED};
     use plotters::style::BLUE;
@@ -159,9 +160,12 @@ mod tests {
     }
 
     #[test]
-    fn thousand_step_walk() {
-        let starting_state = HundredStepState::new(500);
+    fn random_walk() {
+        let number_of_states = 1000;
 
+        let state_factory = WalkStateFactory::new(number_of_states, 100, 100).unwrap();
+
+        let starting_state = state_factory.get_starting_state();
         let learned_weights = semi_gradient_td0_single_weight(
             starting_state,
             RandomPolicy::new(),
@@ -170,9 +174,9 @@ mod tests {
             100000,
         );
 
-        let data_points = (0..1000)
+        let data_points = (0..number_of_states)
             .map(|i| {
-                let state = HundredStepState::new(i);
+                let state = state_factory.generate_state_and_reward_for_id(i as i32).1;
                 let value = linear_differentiable_function(&state.get_values(), &learned_weights);
                 (i as f32, value as f32)
             })
@@ -189,7 +193,7 @@ mod tests {
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
             "Expected".to_string(),
-            vec![(0.0, -1.0), (1000.0, 1.0)],
+            vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
         line_chart_builder.add_data(LineChartData::new(
@@ -199,55 +203,5 @@ mod tests {
         ));
 
         line_chart_builder.create_chart().unwrap();
-    }
-
-    #[derive(Clone, Debug)]
-    struct HundredStepState {
-        id: i32,
-    }
-
-    impl HundredStepState {
-        fn new(id: i32) -> Self {
-            Self { id }
-        }
-    }
-
-    impl State for HundredStepState {
-        fn get_id(&self) -> String {
-            self.id.to_string()
-        }
-
-        fn get_actions(&self) -> Vec<String> {
-            (-100..100).map(|i| i.to_string()).collect()
-        }
-
-        fn is_terminal(&self) -> bool {
-            if self.id < 0 || self.id > 1000 {
-                true
-            } else {
-                false
-            }
-        }
-
-        fn take_action(&self, action: &str) -> (f64, Self) {
-            let diff: i32 = action.parse().unwrap();
-            let new_id = self.id + diff;
-            let new_state = HundredStepState::new(new_id);
-            let reward = if new_id < 0 {
-                -1.0
-            } else if new_id > 1000 {
-                1.0
-            } else {
-                0.0
-            };
-            (reward, new_state)
-        }
-
-        fn get_values(&self) -> Vec<f64> {
-            let index = (self.id / 100).clamp(0, 9) as usize;
-            let mut res_vec = vec![0.0; 10];
-            res_vec[index] = 1.0;
-            res_vec
-        }
     }
 }

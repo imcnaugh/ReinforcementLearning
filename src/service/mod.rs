@@ -1,6 +1,6 @@
 mod chart_service;
 mod util;
-mod x_state_walk_environment;
+pub mod x_state_walk_environment;
 
 pub use chart_service::LineChartBuilder;
 pub use chart_service::LineChartData;
