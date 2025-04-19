@@ -107,6 +107,10 @@ impl WalkStateFactory {
         groups[group_id] = 1.0;
         groups
     }
+
+    fn basic_values_for_state_id(&self, new_id: usize) -> Vec<f64> {
+        vec![-1.0, new_id as f64]
+    }
 }
 
 #[derive(Debug)]
