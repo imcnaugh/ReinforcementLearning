@@ -24,6 +24,44 @@ pub fn weight_update(
         .collect()
 }
 
+pub fn monte_carlo_stochastic_gradient_decent<S: State, P: Policy>(
+    starting_state: S,
+    policy: P,
+    learning_rate: f64,
+    episode_count: usize,
+) -> Vec<f64> {
+    let mut weights = vec![0.0; starting_state.get_values().len()];
+
+    (0..episode_count).for_each(|_| {
+        let mut current_state = starting_state.clone();
+        let mut states_and_rewards: Vec<(S, f64)> = Vec::new();
+
+        while !current_state.is_terminal() {
+            let action = match policy.select_action_for_state(&current_state.get_id()) {
+                Ok(a) => a,
+                Err(_) => current_state
+                    .get_actions()
+                    .iter()
+                    .choose(&mut rand::rng())
+                    .unwrap()
+                    .clone(),
+            };
+            let (reward, next_state) = current_state.take_action(&action);
+            states_and_rewards.push((next_state.clone(), reward));
+            current_state = next_state;
+        }
+
+        let mut total_reward = states_and_rewards.iter().map(|(_, r)| r).sum::<f64>();
+        states_and_rewards.iter().for_each(|(state, reward)| {
+            let new_weights =
+                weight_update(&state.get_values(), &weights, learning_rate, total_reward);
+            weights = new_weights;
+            total_reward = total_reward - reward;
+        });
+    });
+    weights
+}
+
 pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
     starting_state: S,
     policy: P,
@@ -47,8 +85,6 @@ pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
             };
 
             let (reward, next_state) = current_state.take_action(&action);
-
-            // println!("current: {}, action: {}, reward: {}, next: {}", current_state.get_id(), action, reward, next_state.get_id());
 
             let new_state_value =
                 linear_differentiable_function(&next_state.get_values(), &weights);
@@ -160,16 +196,15 @@ mod tests {
     }
 
     #[test]
-    fn random_walk() {
+    fn random_walk_monte_carlo() {
         let number_of_states = 1000;
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, 100).unwrap();
 
         let starting_state = state_factory.get_starting_state();
-        let learned_weights = semi_gradient_td0_single_weight(
+        let learned_weights = monte_carlo_stochastic_gradient_decent(
             starting_state,
             RandomPolicy::new(),
-            1.0,
             0.00002,
             100000,
         );
@@ -188,7 +223,7 @@ mod tests {
         line_chart_builder.set_path(PathBuf::from(
             "output/chapter9/thousand_state_random_walk.png",
         ));
-        line_chart_builder.set_title("Thousand state random walk".to_string());
+        line_chart_builder.set_title("Thousand state random walk Monte Carlo".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
