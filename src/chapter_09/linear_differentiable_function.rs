@@ -62,7 +62,7 @@ pub fn monte_carlo_stochastic_gradient_decent<S: State, P: Policy>(
     weights
 }
 
-pub fn semi_gradient_td0_single_weight<S: State, P: Policy>(
+pub fn semi_gradient_td0<S: State, P: Policy>(
     starting_state: S,
     policy: P,
     discount_rate: f64,
@@ -221,9 +221,50 @@ mod tests {
 
         let mut line_chart_builder = LineChartBuilder::new();
         line_chart_builder.set_path(PathBuf::from(
-            "output/chapter9/thousand_state_random_walk.png",
+            "output/chapter9/thousand_state_random_walk-monte_carlo.png",
         ));
         line_chart_builder.set_title("Thousand state random walk Monte Carlo".to_string());
+        line_chart_builder.set_x_label("State".to_string());
+        line_chart_builder.set_y_label("Value".to_string());
+        line_chart_builder.add_data(LineChartData::new(
+            "Expected".to_string(),
+            vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
+            ShapeStyle::from(&RED),
+        ));
+        line_chart_builder.add_data(LineChartData::new(
+            "State values".to_string(),
+            data_points,
+            ShapeStyle::from(&BLUE),
+        ));
+
+        line_chart_builder.create_chart().unwrap();
+    }
+
+    #[test]
+    fn random_walk_semi_gradient_td0() {
+        let number_of_states = 1000;
+
+        let state_factory = WalkStateFactory::new(number_of_states, 100, 100).unwrap();
+
+        let starting_state = state_factory.get_starting_state();
+        let learned_weights =
+            semi_gradient_td0(starting_state, RandomPolicy::new(), 1.0, 0.00002, 10000000);
+
+        let data_points = (0..number_of_states)
+            .map(|i| {
+                let state = state_factory.generate_state_and_reward_for_id(i as i32).1;
+                let value = linear_differentiable_function(&state.get_values(), &learned_weights);
+                (i as f32, value as f32)
+            })
+            .collect();
+
+        println!("learned weights: {:?}", learned_weights);
+
+        let mut line_chart_builder = LineChartBuilder::new();
+        line_chart_builder.set_path(PathBuf::from(
+            "output/chapter9/thousand_state_random_walk-td_0.png",
+        ));
+        line_chart_builder.set_title("Thousand state random walk TD0".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
