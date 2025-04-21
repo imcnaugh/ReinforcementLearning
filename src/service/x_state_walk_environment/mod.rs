@@ -93,7 +93,7 @@ where
             (0.0, false)
         };
 
-        let actions: Vec<String> = (0..self.walk_size)
+        let actions: Vec<String> = (1..=self.walk_size)
             .flat_map(|i| vec![format!("{}", i), format!("-{}", i)])
             .collect();
         let new_id = id.clamp(0, self.number_of_states as i32 - 1) as usize;
