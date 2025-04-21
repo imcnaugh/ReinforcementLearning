@@ -199,7 +199,12 @@ mod tests {
     fn random_walk_monte_carlo() {
         let number_of_states = 1000;
 
-        let state_factory = WalkStateFactory::new(number_of_states, 100, 100).unwrap();
+        let state_factory = WalkStateFactory::new(
+            number_of_states,
+            100,
+            generate_state_aggregation_value_function(number_of_states, 100),
+        )
+        .unwrap();
 
         let starting_state = state_factory.get_starting_state();
         let learned_weights = monte_carlo_stochastic_gradient_decent(
@@ -243,12 +248,22 @@ mod tests {
     #[test]
     fn random_walk_semi_gradient_td0() {
         let number_of_states = 1000;
+        let discount_rate = 1.0;
+        let learning_rate = 0.2;
+        let episode_count = 10;
+        let value_function = generate_simple_value_function();
+        // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
-        let state_factory = WalkStateFactory::new(number_of_states, 100, 100).unwrap();
+        let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
 
         let starting_state = state_factory.get_starting_state();
-        let learned_weights =
-            semi_gradient_td0(starting_state, RandomPolicy::new(), 1.0, 0.00002, 10000000);
+        let learned_weights = semi_gradient_td0(
+            starting_state,
+            RandomPolicy::new(),
+            discount_rate,
+            learning_rate,
+            episode_count,
+        );
 
         let data_points = (0..number_of_states)
             .map(|i| {
@@ -279,5 +294,23 @@ mod tests {
         ));
 
         line_chart_builder.create_chart().unwrap();
+    }
+
+    fn generate_state_aggregation_value_function(
+        total_states: usize,
+        group_size: usize,
+    ) -> impl Fn(usize) -> Vec<f64> {
+        let number_of_groups = total_states / group_size;
+
+        move |id| {
+            let group_id = id / total_states;
+            let mut response = vec![0.0; number_of_groups];
+            response[group_id] = 1.0;
+            response
+        }
+    }
+
+    fn generate_simple_value_function() -> impl Fn(usize) -> Vec<f64> {
+        move |id| vec![1.0, id as f64]
     }
 }
