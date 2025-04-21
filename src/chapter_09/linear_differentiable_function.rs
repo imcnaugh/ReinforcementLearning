@@ -310,6 +310,10 @@ mod tests {
         }
     }
 
+    /// I can't get this to work, I would expect the learned weights to become -1 and .002
+    /// but for whatever reason I always wind up with NaN's. I'm assuming this is due to
+    /// errors with floating point arithmetic. But it's been hard to prove.
+    #[deprecated = "This doesn't work, I'm not sure why"]
     fn generate_simple_value_function() -> impl Fn(usize) -> Vec<f64> {
         move |id| vec![1.0, id as f64]
     }
