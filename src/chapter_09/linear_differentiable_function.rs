@@ -249,10 +249,10 @@ mod tests {
     fn random_walk_semi_gradient_td0() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.2;
+        let learning_rate = 0.4;
         let episode_count = 10;
-        let value_function = generate_simple_value_function();
-        // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        // let value_function = generate_simple_value_function();
+        let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
 
@@ -303,7 +303,7 @@ mod tests {
         let number_of_groups = total_states / group_size;
 
         move |id| {
-            let group_id = id / total_states;
+            let group_id = id / group_size;
             let mut response = vec![0.0; number_of_groups];
             response[group_id] = 1.0;
             response
