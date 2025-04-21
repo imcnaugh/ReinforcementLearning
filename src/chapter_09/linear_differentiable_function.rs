@@ -105,6 +105,83 @@ pub fn semi_gradient_td0<S: State, P: Policy>(
     weights
 }
 
+pub fn n_step_semi_gradient_td<S: State, P: Policy>(
+    starting_state: S,
+    policy: P,
+    discount_rate: f64,
+    learning_rate: f64,
+    episode_count: usize,
+    n: usize,
+) -> Vec<f64> {
+    let mut weights = vec![0.0; starting_state.get_values().len()];
+
+    (0..episode_count).for_each(|_| {
+        let mut termination_time: Option<i32> = None;
+        let mut rewards: Vec<f64> = Vec::new();
+        let mut states: Vec<S> = vec![starting_state.clone()];
+
+        let mut current_state = starting_state.clone();
+
+        for current_timestep in 0..i32::MAX {
+            if current_timestep < termination_time.unwrap_or(i32::MAX) {
+                let action = match policy.select_action_for_state(&starting_state.get_id()) {
+                    Ok(a) => a,
+                    Err(_) => starting_state
+                        .get_actions()
+                        .iter()
+                        .choose(&mut rand::rng())
+                        .unwrap()
+                        .clone(),
+                };
+                let (reward, next_state) = current_state.take_action(&action);
+                rewards.push(reward);
+                states.push(next_state.clone());
+
+                if next_state.is_terminal() {
+                    termination_time = Some(current_timestep + 1);
+                }
+
+                current_state = next_state;
+            }
+            let time_step_to_update = current_timestep - n as i32 + 1;
+            if time_step_to_update >= 0 {
+                let start_time = (time_step_to_update) as usize;
+                let end_time = (time_step_to_update + n as i32)
+                    .min(termination_time.unwrap_or(i32::MAX))
+                    as usize;
+                let mut expected_value = rewards[start_time..end_time]
+                    .iter()
+                    .enumerate()
+                    .map(|(index, r)| {
+                        let pow = index as i32 - time_step_to_update - 1;
+                        let idk = discount_rate.powi(pow);
+                        idk * r
+                    })
+                    .sum::<f64>();
+
+                if (time_step_to_update + n as i32) < termination_time.unwrap_or(i32::MAX) {
+                    let s = &states[(time_step_to_update + n as i32) as usize];
+                    expected_value += learning_rate.powi(n as i32)
+                        * linear_differentiable_function(&s.get_values(), &weights);
+                }
+                let new_weights = weight_update(
+                    &states[time_step_to_update as usize].get_values(),
+                    &weights,
+                    learning_rate,
+                    expected_value,
+                );
+                weights = new_weights;
+            }
+
+            if time_step_to_update == (termination_time.unwrap_or(i32::MAX) - 1) {
+                break;
+            }
+        }
+    });
+
+    weights
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,8 +326,8 @@ mod tests {
     fn random_walk_semi_gradient_td0() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.4;
-        let episode_count = 10;
+        let learning_rate = 0.02;
+        let episode_count = 100;
         // let value_function = generate_simple_value_function();
         let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
@@ -280,6 +357,59 @@ mod tests {
             "output/chapter9/thousand_state_random_walk-td_0.png",
         ));
         line_chart_builder.set_title("Thousand state random walk TD0".to_string());
+        line_chart_builder.set_x_label("State".to_string());
+        line_chart_builder.set_y_label("Value".to_string());
+        line_chart_builder.add_data(LineChartData::new(
+            "Expected".to_string(),
+            vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
+            ShapeStyle::from(&RED),
+        ));
+        line_chart_builder.add_data(LineChartData::new(
+            "State values".to_string(),
+            data_points,
+            ShapeStyle::from(&BLUE),
+        ));
+
+        line_chart_builder.create_chart().unwrap();
+    }
+
+    #[test]
+    fn random_walk_semi_gradient_n_step() {
+        let number_of_states = 1000;
+        let discount_rate = 1.0;
+        let learning_rate = 0.4;
+        let episode_count = 1000;
+        let n = 4;
+
+        let value_function = generate_state_aggregation_value_function(number_of_states, 50);
+
+        let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
+
+        let starting_state = state_factory.get_starting_state();
+        let learned_weights = n_step_semi_gradient_td(
+            starting_state,
+            RandomPolicy::new(),
+            discount_rate,
+            learning_rate,
+            episode_count,
+            n,
+        );
+
+        let data_points = (0..number_of_states)
+            .map(|i| {
+                let state = state_factory.generate_state_and_reward_for_id(i as i32).1;
+                let value = linear_differentiable_function(&state.get_values(), &learned_weights);
+                (i as f32, value as f32)
+            })
+            .collect();
+
+        println!("learned weights: {:?}", learned_weights);
+
+        let mut line_chart_builder = LineChartBuilder::new();
+        line_chart_builder.set_path(PathBuf::from(
+            "output/chapter9/thousand_state_random_walk-n_step.png",
+        ));
+        line_chart_builder.set_title(format!("Thousand state random walk {} step", n));
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
         line_chart_builder.add_data(LineChartData::new(
