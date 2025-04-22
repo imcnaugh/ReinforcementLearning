@@ -412,12 +412,12 @@ mod tests {
     fn random_walk_semi_gradient_n_step() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.4;
+        let learning_rate = 0.001;
         let episode_count = 10000;
-        let n = 4;
+        let n = 10;
 
         // let value_function = generate_simple_value_function(number_of_states);
-        let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        let value_function = generate_state_aggregation_value_function(number_of_states, 50);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
 
