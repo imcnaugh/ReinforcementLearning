@@ -1,6 +1,7 @@
 use crate::attempts_at_framework::v1::policy::Policy;
 use crate::attempts_at_framework::v2::state::State;
 use rand::prelude::IteratorRandom;
+use std::collections::VecDeque;
 
 pub fn linear_differentiable_function(values: &Vec<f64>, weights: &Vec<f64>) -> f64 {
     assert_eq!(values.len(), weights.len());
@@ -117,7 +118,7 @@ pub fn n_step_semi_gradient_td<S: State, P: Policy>(
 
     (0..episode_count).for_each(|_| {
         let mut termination_time: Option<i32> = None;
-        let mut rewards: Vec<f64> = Vec::new();
+        let mut rewards: Vec<f64> = vec![0.0];
         let mut states: Vec<S> = vec![starting_state.clone()];
 
         let mut current_state = starting_state.clone();
@@ -145,24 +146,19 @@ pub fn n_step_semi_gradient_td<S: State, P: Policy>(
             }
             let time_step_to_update = current_timestep - n as i32 + 1;
             if time_step_to_update >= 0 {
-                let start_time = (time_step_to_update) as usize;
+                let start_time = time_step_to_update as usize + 1;
                 let end_time = (time_step_to_update + n as i32)
                     .min(termination_time.unwrap_or(i32::MAX))
                     as usize;
-                let mut expected_value = rewards[start_time..end_time]
+                let mut expected_value = rewards[start_time..=end_time]
                     .iter()
                     .enumerate()
-                    .map(|(index, r)| {
-                        let pow = index as i32 - time_step_to_update - 1;
-                        let idk = discount_rate.powi(pow);
-                        idk * r
-                    })
+                    .map(|(index, r)| discount_rate.powi(index as i32) * r)
                     .sum::<f64>();
 
                 if (time_step_to_update + n as i32) < termination_time.unwrap_or(i32::MAX) {
-                    let s = &states[(time_step_to_update + n as i32) as usize];
                     expected_value += learning_rate.powi(n as i32)
-                        * linear_differentiable_function(&s.get_values(), &weights);
+                        * linear_differentiable_function(&current_state.get_values(), &weights);
                 }
                 let new_weights = weight_update(
                     &states[time_step_to_update as usize].get_values(),
@@ -326,9 +322,9 @@ mod tests {
     fn random_walk_semi_gradient_td0() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.02;
-        let episode_count = 100;
-        // let value_function = generate_simple_value_function();
+        let learning_rate = 0.002;
+        let episode_count = 10000;
+        // let value_function = generate_simple_value_function(number_of_states);
         let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
@@ -378,10 +374,11 @@ mod tests {
         let number_of_states = 1000;
         let discount_rate = 1.0;
         let learning_rate = 0.4;
-        let episode_count = 1000;
+        let episode_count = 10000;
         let n = 4;
 
-        let value_function = generate_state_aggregation_value_function(number_of_states, 50);
+        // let value_function = generate_simple_value_function(number_of_states);
+        let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
 
@@ -433,6 +430,10 @@ mod tests {
         let number_of_groups = total_states / group_size;
 
         move |id| {
+            if id == 0 || id == total_states - 1 {
+                return vec![0.0; number_of_groups];
+            }
+
             let group_id = id / group_size;
             let mut response = vec![0.0; number_of_groups];
             response[group_id] = 1.0;
@@ -444,7 +445,12 @@ mod tests {
     /// but for whatever reason I always wind up with NaN's. I'm assuming this is due to
     /// errors with floating point arithmetic. But it's been hard to prove.
     #[deprecated = "This doesn't work, I'm not sure why"]
-    fn generate_simple_value_function() -> impl Fn(usize) -> Vec<f64> {
-        move |id| vec![1.0, id as f64]
+    fn generate_simple_value_function(total_states: usize) -> impl Fn(usize) -> Vec<f64> {
+        move |id| {
+            if id == 0 || id == total_states - 1 {
+                return vec![0.0, 0.0];
+            }
+            vec![1.0, id as f64]
+        }
     }
 }
