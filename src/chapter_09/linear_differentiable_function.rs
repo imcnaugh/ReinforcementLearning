@@ -221,7 +221,7 @@ pub fn n_step_semi_gradient_td_my_refactor<S: State, P: Policy>(
 mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
-    use crate::service::x_state_walk_environment::WalkStateFactory;
+    use crate::service::x_state_walk_environment::{WalkState, WalkStateFactory};
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, RED};
     use plotters::style::BLUE;
@@ -311,12 +311,9 @@ mod tests {
     fn random_walk_monte_carlo() {
         let number_of_states = 1000;
 
-        let state_factory = WalkStateFactory::new(
-            number_of_states,
-            100,
-            generate_state_aggregation_value_function(number_of_states, 100),
-        )
-        .unwrap();
+        // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        let value_function = generate_polynomial_value_function(number_of_states, 1);
+        let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
         let starting_state = state_factory.get_starting_state();
         let learned_weights = monte_carlo_stochastic_gradient_decent(
@@ -364,9 +361,10 @@ mod tests {
         let learning_rate = 0.002;
         let episode_count = 10000;
         // let value_function = generate_simple_value_function(number_of_states);
-        let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        let value_function = generate_polynomial_value_function(number_of_states, 1);
 
-        let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
+        let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
         let starting_state = state_factory.get_starting_state();
         let learned_weights = semi_gradient_td0(
@@ -419,7 +417,7 @@ mod tests {
         // let value_function = generate_simple_value_function(number_of_states);
         let value_function = generate_state_aggregation_value_function(number_of_states, 50);
 
-        let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
+        let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
         let starting_state = state_factory.get_starting_state();
         let learned_weights = n_step_semi_gradient_td(
@@ -466,14 +464,14 @@ mod tests {
     fn random_walk_semi_gradient_n_step_from_refactor() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.001;
+        let learning_rate = 0.0002;
         let episode_count = 10000;
         let n = 10;
 
         // let value_function = generate_simple_value_function(number_of_states);
-        let value_function = generate_state_aggregation_value_function(number_of_states, 50);
+        let value_function = generate_polynomial_value_function(number_of_states, 1);
 
-        let state_factory = WalkStateFactory::new(number_of_states, 100, value_function).unwrap();
+        let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
         let starting_state = state_factory.get_starting_state();
         let learned_weights = n_step_semi_gradient_td_my_refactor(
@@ -522,17 +520,35 @@ mod tests {
     fn generate_state_aggregation_value_function(
         total_states: usize,
         group_size: usize,
-    ) -> impl Fn(usize) -> Vec<f64> {
+    ) -> impl Fn(WalkState) -> Vec<f64> {
         let number_of_groups = total_states / group_size;
 
-        move |id| {
-            if id == 0 || id == total_states - 1 {
+        move |state| {
+            if state.is_terminal() {
                 return vec![0.0; number_of_groups];
             }
 
-            let group_id = id / group_size;
+            let group_id = state.get_id().parse::<usize>().unwrap() / group_size;
             let mut response = vec![0.0; number_of_groups];
             response[group_id] = 1.0;
+            response
+        }
+    }
+
+    fn generate_polynomial_value_function(
+        total_states: usize,
+        polynomial_degree: usize,
+    ) -> impl Fn(WalkState) -> Vec<f64> {
+        move |state| {
+            let mut response = vec![0.0; polynomial_degree + 1];
+            if !state.is_terminal() {
+                response[0] = 1.0;
+                for i in 0..polynomial_degree {
+                    response[i + 1] = (state.get_id().parse::<f64>().unwrap()
+                        / total_states as f64)
+                        * response[i];
+                }
+            }
             response
         }
     }
