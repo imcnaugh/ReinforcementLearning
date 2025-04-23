@@ -1,6 +1,5 @@
 use crate::attempts_at_framework::v1::policy::Policy;
 use crate::attempts_at_framework::v2::state::State;
-use egui::Key::N;
 use rand::prelude::IteratorRandom;
 use std::collections::VecDeque;
 
@@ -194,8 +193,8 @@ pub fn n_step_semi_gradient_td_my_refactor<S: State, P: Policy>(
                 next_state = Some(ns);
                 sliding_reward_total += reward;
             }
-            let back_of_queue = queue.pop_back().unwrap();
-            if let Some((reward, values)) = back_of_queue {
+
+            if let Some((reward, values)) = queue.pop_back().unwrap() {
                 let expected = sliding_reward_total
                     + (discount_rate.powi(n as i32)
                         * linear_differentiable_function(&current_state.get_values(), &weights));
@@ -225,6 +224,7 @@ mod tests {
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, RED};
     use plotters::style::BLUE;
+    use std::f64::consts::PI;
     use std::path::PathBuf;
 
     #[test]
@@ -415,7 +415,8 @@ mod tests {
         let n = 10;
 
         // let value_function = generate_simple_value_function(number_of_states);
-        let value_function = generate_state_aggregation_value_function(number_of_states, 50);
+        // let value_function = generate_state_aggregation_value_function(number_of_states, 50);
+        let value_function = generate_state_aggregation_value_function(number_of_states, 100);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
@@ -469,7 +470,8 @@ mod tests {
         let n = 10;
 
         // let value_function = generate_simple_value_function(number_of_states);
-        let value_function = generate_polynomial_value_function(number_of_states, 1);
+        // let value_function = generate_polynomial_value_function(number_of_states, 1);
+        let value_function = generate_fourier_series_value_function(number_of_states, 1);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
@@ -550,6 +552,18 @@ mod tests {
                 }
             }
             response
+        }
+    }
+
+    fn generate_fourier_series_value_function(
+        total_size: usize,
+        k_max: usize,
+    ) -> impl Fn(WalkState) -> Vec<f64> {
+        move |s| {
+            let x = s.get_id().parse::<f64>().unwrap() / total_size as f64;
+            (0..k_max + 1)
+                .map(|k| f64::cos(k as f64 * PI * x))
+                .collect()
         }
     }
 
