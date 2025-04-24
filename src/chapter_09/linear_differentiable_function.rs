@@ -417,6 +417,7 @@ mod tests {
         // let value_function = generate_simple_value_function(number_of_states);
         // let value_function = generate_state_aggregation_value_function(number_of_states, 50);
         let value_function = generate_state_aggregation_value_function(number_of_states, 100);
+        // let value_function = generate_tile_coding_value_function_1d(number_of_states, 200, 4, 4);
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
@@ -463,15 +464,24 @@ mod tests {
 
     #[test]
     fn random_walk_semi_gradient_n_step_from_refactor() {
+        let tile_size = 20;
+        let number_of_tiles = 4;
+
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.0002;
-        let episode_count = 10000;
+        let learning_rate = 1.0 / ((number_of_states / tile_size) * number_of_tiles) as f64;
+        let episode_count = 5000;
         let n = 10;
 
         // let value_function = generate_simple_value_function(number_of_states);
         // let value_function = generate_polynomial_value_function(number_of_states, 1);
-        let value_function = generate_fourier_series_value_function(number_of_states, 1);
+        // let value_function = generate_fourier_series_value_function(number_of_states, 1);
+        let value_function = generate_tile_coding_value_function_1d(
+            number_of_states,
+            tile_size,
+            number_of_tiles,
+            tile_size / number_of_tiles,
+        );
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
@@ -563,6 +573,38 @@ mod tests {
             let x = s.get_id().parse::<f64>().unwrap() / total_size as f64;
             (0..k_max + 1)
                 .map(|k| f64::cos(k as f64 * PI * x))
+                .collect()
+        }
+    }
+
+    fn generate_tile_coding_value_function_1d(
+        total_states: usize,
+        tile_size: usize,
+        number_of_tiles: usize,
+        tile_offset: usize,
+    ) -> impl Fn(WalkState) -> Vec<f64> {
+        let idk = total_states / tile_size;
+        let tile_indexes: Vec<(usize, usize)> = (0..idk)
+            .flat_map(|i| {
+                (0..number_of_tiles)
+                    .map(|j| {
+                        let t_start = (i * tile_size) + (tile_offset * j);
+                        let t_end = t_start + tile_size;
+                        (t_start.clamp(0, total_states), t_end.clamp(0, total_states))
+                    })
+                    .collect::<Vec<(usize, usize)>>()
+            })
+            .collect();
+
+        move |s| {
+            if s.is_terminal() {
+                return vec![0.0; tile_indexes.len()];
+            }
+
+            let id = s.get_id().parse::<usize>().unwrap();
+            tile_indexes
+                .iter()
+                .map(|t| if id >= t.0 && id < t.1 { 1.0 } else { 0.0 })
                 .collect()
         }
     }
