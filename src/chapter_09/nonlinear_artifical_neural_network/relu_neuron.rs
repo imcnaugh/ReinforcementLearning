@@ -15,6 +15,10 @@ impl ReluNeuron {
 }
 
 impl Neuron for ReluNeuron {
+    fn get_weights_and_bias(&self) -> (&[f64], &f64) {
+        (self.weights.as_slice(), &self.bias)
+    }
+
     fn forward(&self, inputs: &[f64]) -> f64 {
         assert_eq!(inputs.len(), self.weights.len());
 
