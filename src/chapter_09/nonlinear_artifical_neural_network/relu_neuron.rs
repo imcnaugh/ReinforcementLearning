@@ -30,6 +30,23 @@ impl Neuron for ReluNeuron {
     }
 
     fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
-        todo!()
+        let current_value = self.forward(inputs);
+        let derivative = if current_value > 0.0 { 1.0 } else { 0.0 };
+
+        let gradient = learning_rate * derivative * expected;
+
+        self.weights
+            .iter_mut()
+            .zip(inputs)
+            .for_each(|(weight, input)| {
+                *weight += gradient * input;
+            });
+
+        self.bias += gradient;
+
+        self.weights
+            .iter()
+            .map(|weight| weight * derivative * expected)
+            .collect()
     }
 }
