@@ -12,8 +12,22 @@ impl LinearNeuron {
             bias: 0.0,
         }
     }
+}
 
-    pub fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
+impl Neuron for LinearNeuron {
+    fn get_weights_and_bias(&self) -> (&[f64], &f64) {
+        (self.weights.as_slice(), &self.bias)
+    }
+
+    fn forward(&self, inputs: &[f64]) -> f64 {
+        assert_eq!(inputs.len(), self.weights.len());
+        inputs
+            .iter()
+            .zip(self.weights.iter())
+            .fold(self.bias, |acc, (x, w)| acc + x * w)
+    }
+
+    fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
         let error = expected - self.forward(inputs);
         let gradient = error * learning_rate;
 
@@ -29,20 +43,6 @@ impl LinearNeuron {
     }
 }
 
-impl Neuron for LinearNeuron {
-    fn get_weights_and_bias(&self) -> (&[f64], &f64) {
-        (self.weights.as_slice(), &self.bias)
-    }
-
-    fn forward(&self, inputs: &[f64]) -> f64 {
-        assert_eq!(inputs.len(), self.weights.len());
-        inputs
-            .iter()
-            .zip(self.weights.iter())
-            .fold(self.bias, |acc, (x, w)| acc + x * w)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,18 +50,19 @@ mod tests {
     #[test]
     fn test_linear_neuron() {
         let mut neuron = LinearNeuron::new(2);
-        let inputs = vec![1.0, 1.0];
+        let inputs = vec![2.0, 1.0];
         let expected = 2.0;
         let learning_rate = 0.01;
 
         let mut iteration_count: usize = 0;
+        let mut output = Vec::new();
         for _ in 0..10000 {
             let calculated_output = neuron.forward(&inputs);
             if (calculated_output - expected).abs() < 0.000001 {
                 break;
             }
 
-            neuron.backwards(&inputs, expected, learning_rate);
+            output = neuron.backwards(&inputs, expected, learning_rate);
 
             iteration_count += 1;
         }
@@ -71,5 +72,6 @@ mod tests {
             iteration_count,
             neuron.get_weights_and_bias()
         );
+        println!("output: {:?}", output);
     }
 }

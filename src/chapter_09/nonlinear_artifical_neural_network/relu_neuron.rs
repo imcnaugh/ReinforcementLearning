@@ -28,4 +28,8 @@ impl Neuron for ReluNeuron {
             .fold(self.bias, |acc, (x, w)| acc + x * w)
             .max(0.0)
     }
+
+    fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
+        todo!()
+    }
 }
