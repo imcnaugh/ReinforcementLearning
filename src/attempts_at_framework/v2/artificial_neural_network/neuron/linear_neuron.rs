@@ -1,4 +1,4 @@
-use crate::chapter_09::nonlinear_artifical_neural_network::neuron::Neuron;
+use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
 
 struct LinearNeuron {
     weights: Vec<f64>,
