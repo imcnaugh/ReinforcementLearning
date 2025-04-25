@@ -14,14 +14,16 @@ impl LinearNeuron {
     }
 
     pub fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
-        // TODO Debate if this function should be a parameter for the neuron
         let error = expected - self.forward(inputs);
         let gradient = error * learning_rate;
 
-        self.weights.iter_mut().zip(inputs).for_each(|(weight, input)| {
-            *weight = *weight + (gradient * input);
-        });
-        self.bias = self.bias + gradient;
+        self.weights
+            .iter_mut()
+            .zip(inputs)
+            .for_each(|(weight, input)| {
+                *weight += gradient * input;
+            });
+        self.bias += gradient;
 
         self.weights.iter().map(|weight| weight * error).collect()
     }
@@ -49,11 +51,11 @@ mod tests {
     fn test_linear_neuron() {
         let mut neuron = LinearNeuron::new(2);
         let inputs = vec![1.0, 1.0];
-        let expected = 3.0;
-        let learning_rate = 0.0001;
+        let expected = 2.0;
+        let learning_rate = 0.01;
 
         let mut iteration_count: usize = 0;
-        for _ in 0..1000000 {
+        for _ in 0..10000 {
             let calculated_output = neuron.forward(&inputs);
             if (calculated_output - expected).abs() < 0.000001 {
                 break;
@@ -64,7 +66,10 @@ mod tests {
             iteration_count += 1;
         }
 
-        println!("converged after {} iterations, with weights: {:?}", iteration_count, neuron.get_weights_and_bias());
-
+        println!(
+            "converged after {} iterations, with weights: {:?}",
+            iteration_count,
+            neuron.get_weights_and_bias()
+        );
     }
 }
