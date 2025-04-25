@@ -1,4 +1,5 @@
 use crate::chapter_09::nonlinear_artifical_neural_network::neuron::Neuron;
+use rand::{rng, Rng};
 
 struct ReluNeuron {
     weights: Vec<f64>,
@@ -8,9 +9,19 @@ struct ReluNeuron {
 impl ReluNeuron {
     pub fn new(input_size: usize) -> Self {
         Self {
-            weights: vec![0.0; input_size],
+            weights: (0..input_size)
+                .map(|_| rng().random_range(-0.1..0.1))
+                .collect(),
             bias: 0.0,
         }
+    }
+
+    pub fn build(weights: &[f64], bias: f64) -> Result<Self, Box<(dyn std::error::Error)>> {
+        let neuron = Self {
+            weights: weights.to_vec(),
+            bias,
+        };
+        Ok(neuron)
     }
 }
 
@@ -54,32 +65,49 @@ impl Neuron for ReluNeuron {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
-    fn test_relu_neuron() {
-        let mut neuron = ReluNeuron::new(2);
-        let inputs = vec![1.0, 2.0];
-        let expected = 1.0;
-        let learning_rate = 0.01;
+    fn test_relu_basic_functionality() {
+        let neuron = ReluNeuron::build(&[0.5, -0.5], 0.0).unwrap();
 
-        let mut iteration_count: usize = 0;
-        let mut output = Vec::new();
-        for _ in 0..10000 {
-            let calculated_output = neuron.forward(&inputs);
-            if (calculated_output - expected).abs() < 0.000001 {
-                break;
-            }
+        // Test positive output
+        let inputs = vec![2.0, 1.0];
+        // Expected calculation: (2.0 * 0.5) + (1.0 * -0.5) + 0.0 = 0.5
+        let output = neuron.forward(&inputs);
+        assert_eq!(output, 0.5);
 
-            output = neuron.backwards(&inputs, expected, learning_rate);
+        // Test negative input (should return 0)
+        let inputs = vec![-2.0, 1.0];
+        // Expected calculation: (-2.0 * 0.5) + (1.0 * -0.5) + 0.0 = -1.5
+        // But ReLU should clamp it to 0
+        let output = neuron.forward(&inputs);
+        assert_eq!(output, 0.0);
+    }
 
-            iteration_count += 1;
-        }
+    #[test]
+    fn test_relu_learning() {
+        let mut neuron = ReluNeuron::build(&[0.1, 0.1], 0.0).unwrap();
 
-        println!(
-            "converged after {} iterations, with weights: {:?}",
-            iteration_count,
-            neuron.get_weights_and_bias()
+        let inputs = vec![1.0, 1.0];
+        let initial_output = neuron.forward(&inputs);
+
+        // Train the neuron
+        let gradients = neuron.backwards(&inputs, 1.0, 0.1);
+
+        println!("{:?}", gradients);
+
+        let final_output = neuron.forward(&inputs);
+        assert!(
+            final_output > initial_output,
+            "Neuron should learn and increase output"
         );
-        println!("output: {:?}", output);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_input_size_mismatch() {
+        let neuron = ReluNeuron::new(2);
+        let invalid_inputs = vec![1.0, 2.0, 3.0];
+        neuron.forward(&invalid_inputs);
     }
 }

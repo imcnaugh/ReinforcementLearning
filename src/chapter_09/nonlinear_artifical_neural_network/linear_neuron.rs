@@ -12,6 +12,14 @@ impl LinearNeuron {
             bias: 0.0,
         }
     }
+
+    pub fn build(weights: &[f64], bias: f64) -> Result<Self, Box<(dyn std::error::Error)>> {
+        let neuron = Self {
+            weights: weights.to_vec(),
+            bias,
+        };
+        Ok(neuron)
+    }
 }
 
 impl Neuron for LinearNeuron {
