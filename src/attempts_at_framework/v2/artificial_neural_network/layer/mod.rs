@@ -2,42 +2,43 @@ use crate::attempts_at_framework::v2::artificial_neural_network::neuron::linear_
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::relu_neuron::ReluNeuron;
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
 
-pub struct Layer<N: Neuron> {
-    neurons: Vec<N>,
-    inputs: usize,
+struct TwoLayerNetwork {
+    hidden_layer: Vec<ReluNeuron>,
+    output_layer: LinearNeuron,
 }
 
-impl<N> Layer<N>
-where
-    N: Neuron,
-{
-    pub fn new_relu_layer(size: usize, inputs: usize) -> Layer<ReluNeuron> {
-        let neurons = (0..size)
-            .map(|_| ReluNeuron::new(inputs))
-            .collect::<Vec<ReluNeuron>>();
-
-        Layer { inputs, neurons }
+impl TwoLayerNetwork {
+    fn new() -> Self {
+        TwoLayerNetwork {
+            hidden_layer: vec![ReluNeuron::new(1), ReluNeuron::new(1)],
+            output_layer: LinearNeuron::new(2),
+        }
     }
 
-    pub fn new_linear_layer(size: usize, inputs: usize) -> Layer<LinearNeuron> {
-        let neurons = (0..size)
-            .map(|_| LinearNeuron::new(inputs))
-            .collect::<Vec<LinearNeuron>>();
-
-        Layer { inputs, neurons }
+    fn forward(&self, x: f64) -> f64 {
+        let hidden_outputs = self
+            .hidden_layer
+            .iter()
+            .map(|neuron| neuron.forward(&[x]))
+            .collect::<Vec<f64>>();
+        self.output_layer.forward(&hidden_outputs)
     }
 
-    pub fn calculate(&self, i: &[f64]) -> Vec<f64> {
-        assert_eq!(i.len(), self.inputs);
-        self.neurons.iter().map(|n| n.forward(i)).collect()
-    }
+    fn train(&mut self, x: f64, y_true: f64, learning_rate: f64) -> f64 {
+        let hidden_outputs: Vec<f64> = self.hidden_layer.iter().map(|n| n.forward(&[x])).collect();
+        let y_pred = self.output_layer.forward(&hidden_outputs);
+        let loss = (y_true - y_pred).powi(2);
 
-    pub fn learn(&mut self, i: &[f64], expected: &[f64], learning_rate: f64) {
-        assert_eq!(i.len(), self.inputs);
+        let gradient = y_pred - y_true;
+        let gradient_hidden = self
+            .output_layer
+            .backwards(&hidden_outputs, gradient, learning_rate);
 
-        self.neurons.iter_mut().enumerate().for_each(|(index, n)| {
-            n.backwards(i, expected[index], learning_rate);
-        });
+        for (i, neuron) in self.hidden_layer.iter_mut().enumerate() {
+            neuron.backwards(&[x], gradient_hidden[i], learning_rate);
+        }
+
+        loss
     }
 }
 
@@ -47,23 +48,21 @@ mod tests {
 
     #[test]
     fn test_layer() {
-        // let mut test_layer = Layer::<LinearNeuron>::new_linear_layer(1, 1);
-        let mut test_layer = Layer::<ReluNeuron>::new_relu_layer(1, 1);
+        let mut network = TwoLayerNetwork::new();
+        let learning_rate = 0.01;
 
-        let expected = vec![10.0];
-        let inputs = vec![1.0];
+        let data = vec![(1.0, 3.0), (2.0, 5.0), (3.0, 7.0)];
 
-        let mut current = test_layer.calculate(&inputs);
-        let mut error = (current[0] - expected[0]).abs();
-
-        for i in 0..1000 {
-            if error < 0.0001 {
-                println!("Converged in {} iterations.", i);
-                break;
+        for epoch in 1..1000 {
+            let mut total_loss = 0.0;
+            for &(x, y_true) in &data {
+                total_loss += network.train(x, y_true, learning_rate);
             }
-            test_layer.learn(&inputs, &expected, 0.1);
-            current = test_layer.calculate(&inputs);
-            error = (current[0] - expected[0]).abs();
+            if epoch % 100 == 0 {
+                println!("Epoch: {}, Loss: {}", epoch, total_loss);
+            }
         }
+
+        println!("Input 4.0 -> Prediction: {}", network.forward(4.0)); // Should be ~9.0
     }
 }

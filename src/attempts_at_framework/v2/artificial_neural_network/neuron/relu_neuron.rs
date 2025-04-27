@@ -102,6 +102,36 @@ mod tests {
     }
 
     #[test]
+    fn test_convergence() {
+        let mut neuron = ReluNeuron::build(&[0.1, 0.1], 0.0).unwrap();
+        let inputs = vec![2.0, 1.0];
+        let expected = 2.0;
+        let learning_rate = 0.1;
+
+        let mut iteration_count: usize = 0;
+        let mut output = Vec::new();
+        for _ in 0..10000 {
+            let calculated_output = neuron.forward(&inputs);
+            if (calculated_output - expected).abs() < 0.000001 {
+                break;
+            }
+
+            let gradient = expected - neuron.forward(&inputs);
+
+            output = neuron.backwards(&inputs, gradient, learning_rate);
+
+            iteration_count += 1;
+        }
+
+        println!(
+            "converged after {} iterations, with weights: {:?}",
+            iteration_count,
+            neuron.get_weights_and_bias()
+        );
+        println!("output: {:?}", output);
+    }
+
+    #[test]
     #[should_panic]
     fn test_input_size_mismatch() {
         let neuron = ReluNeuron::new(2);
