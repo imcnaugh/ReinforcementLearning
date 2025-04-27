@@ -35,19 +35,19 @@ impl Neuron for LinearNeuron {
             .fold(self.bias, |acc, (x, w)| acc + x * w)
     }
 
-    fn backwards(&mut self, inputs: &[f64], expected: f64, learning_rate: f64) -> Vec<f64> {
-        let error = expected - self.forward(inputs);
-        let gradient = error * learning_rate;
-
+    fn backwards(&mut self, inputs: &[f64], gradient: f64, learning_rate: f64) -> Vec<f64> {
         self.weights
             .iter_mut()
             .zip(inputs)
             .for_each(|(weight, input)| {
-                *weight += gradient * input;
+                *weight += gradient * input * learning_rate;
             });
-        self.bias += gradient;
+        self.bias += gradient * learning_rate;
 
-        self.weights.iter().map(|weight| weight * error).collect()
+        self.weights
+            .iter()
+            .map(|weight| weight * gradient)
+            .collect()
     }
 }
 
@@ -70,7 +70,9 @@ mod tests {
                 break;
             }
 
-            output = neuron.backwards(&inputs, expected, learning_rate);
+            let gradient = expected - neuron.forward(&inputs);
+
+            output = neuron.backwards(&inputs, gradient, learning_rate);
 
             iteration_count += 1;
         }
