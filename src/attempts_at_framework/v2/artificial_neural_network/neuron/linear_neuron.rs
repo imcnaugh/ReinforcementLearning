@@ -1,6 +1,6 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
 
-struct LinearNeuron {
+pub struct LinearNeuron {
     weights: Vec<f64>,
     bias: f64,
 }

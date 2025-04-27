@@ -1,5 +1,5 @@
-mod linear_neuron;
-mod relu_neuron;
+pub mod linear_neuron;
+pub mod relu_neuron;
 
 pub trait Neuron {
     fn get_weights_and_bias(&self) -> (&[f64], &f64);

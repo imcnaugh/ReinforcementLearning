@@ -1,2 +1,2 @@
-mod neuron;
 mod layer;
+mod neuron;

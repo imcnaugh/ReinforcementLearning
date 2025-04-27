@@ -1,7 +1,7 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
 use rand::{rng, Rng};
 
-struct ReluNeuron {
+pub struct ReluNeuron {
     weights: Vec<f64>,
     bias: f64,
 }
@@ -10,7 +10,7 @@ impl ReluNeuron {
     pub fn new(input_size: usize) -> Self {
         Self {
             weights: (0..input_size)
-                .map(|_| rng().random_range(-0.1..0.1))
+                .map(|_| rng().random_range(0.1..0.9))
                 .collect(),
             bias: 0.0,
         }
