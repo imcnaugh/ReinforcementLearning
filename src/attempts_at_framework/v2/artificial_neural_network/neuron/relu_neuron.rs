@@ -7,15 +7,6 @@ pub struct ReluNeuron {
 }
 
 impl ReluNeuron {
-    pub fn new(input_size: usize) -> Self {
-        Self {
-            weights: (0..input_size)
-                .map(|_| rng().random_range(0.1..0.9))
-                .collect(),
-            bias: 0.0,
-        }
-    }
-
     pub fn build(weights: &[f64], bias: f64) -> Result<Self, Box<(dyn std::error::Error)>> {
         let neuron = Self {
             weights: weights.to_vec(),
@@ -26,6 +17,15 @@ impl ReluNeuron {
 }
 
 impl Neuron for ReluNeuron {
+    fn new(input_size: usize) -> Self {
+        Self {
+            weights: (0..input_size)
+                .map(|_| rng().random_range(0.1..0.9))
+                .collect(),
+            bias: 0.0,
+        }
+    }
+
     fn get_weights_and_bias(&self) -> (&[f64], &f64) {
         (self.weights.as_slice(), &self.bias)
     }

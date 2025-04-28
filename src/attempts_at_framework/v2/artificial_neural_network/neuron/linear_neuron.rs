@@ -6,13 +6,6 @@ pub struct LinearNeuron {
 }
 
 impl LinearNeuron {
-    pub fn new(number_of_inputs: usize) -> Self {
-        Self {
-            weights: vec![0.0; number_of_inputs],
-            bias: 0.0,
-        }
-    }
-
     pub fn build(weights: &[f64], bias: f64) -> Result<Self, Box<(dyn std::error::Error)>> {
         let neuron = Self {
             weights: weights.to_vec(),
@@ -23,6 +16,13 @@ impl LinearNeuron {
 }
 
 impl Neuron for LinearNeuron {
+    fn new(number_of_inputs: usize) -> Self {
+        Self {
+            weights: vec![0.0; number_of_inputs],
+            bias: 0.0,
+        }
+    }
+
     fn get_weights_and_bias(&self) -> (&[f64], &f64) {
         (self.weights.as_slice(), &self.bias)
     }
