@@ -29,12 +29,7 @@ impl<N: Neuron> Layer<N> {
             input_count,
         }
     }
-}
 
-impl<N> Layer<N>
-where
-    N: Neuron,
-{
     pub fn get_id(&self) -> usize {
         self.id
     }
