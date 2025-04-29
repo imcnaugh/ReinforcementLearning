@@ -1,18 +1,23 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::layer::Layer;
+use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::LossFunction;
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
+use crate::chapter_05::policy::Policy;
 
-pub struct Model<N>
+pub struct Model<N, L>
 where
     N: Neuron,
+    L: LossFunction,
 {
     name: String,
     version: String,
     layers: Vec<Box<Layer<N>>>,
+    loss_function: L,
 }
 
-impl<N> Model<N>
+impl<N, L> Model<N, L>
 where
     N: Neuron,
+    L: LossFunction,
 {
     pub fn predict(&self, input: Vec<f64>) -> Vec<f64> {
         self.layers
@@ -22,7 +27,10 @@ where
 
     pub fn train(&mut self, input: Vec<f64>, expected: Vec<f64>, learning_rate: f64) {
         let predicted = self.predict(input);
-        let loss = expected
+        let new_loss = self.loss_function.calculate_loss(&expected, &predicted);
+
+        //TODO verify this is the sam and remove it.
+        let _loss = expected
             .iter()
             .zip(predicted.iter())
             .fold(0.0, |acc, (expected, predicted)| {

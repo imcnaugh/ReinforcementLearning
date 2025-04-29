@@ -49,6 +49,10 @@ impl Neuron for LinearNeuron {
             .map(|weight| weight * gradient)
             .collect()
     }
+
+    fn activation_derivative(&self, output: f64) -> f64 {
+        1.0
+    }
 }
 
 #[cfg(test)]

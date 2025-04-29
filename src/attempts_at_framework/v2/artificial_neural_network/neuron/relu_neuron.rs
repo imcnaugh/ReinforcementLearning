@@ -58,6 +58,14 @@ impl Neuron for ReluNeuron {
             .map(|weight| weight * derivative * gradient)
             .collect()
     }
+
+    fn activation_derivative(&self, output: f64) -> f64 {
+        if output > 0.0 {
+            1.0
+        } else {
+            0.0
+        }
+    }
 }
 
 #[cfg(test)]
