@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicUsize;
 
 static LAYER_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-struct Layer<N>
+pub struct Layer<N>
 where
     N: Neuron,
 {
@@ -57,87 +57,9 @@ impl<N: Neuron> Layer<N> {
     }
 }
 
-struct TwoLayerNetwork {
-    hidden_layer: Vec<ReluNeuron>,
-    output_layer: LinearNeuron,
-}
-
-impl TwoLayerNetwork {
-    fn new() -> Self {
-        TwoLayerNetwork {
-            hidden_layer: vec![ReluNeuron::new(1), ReluNeuron::new(1)],
-            output_layer: LinearNeuron::new(2),
-        }
-    }
-
-    fn forward(&self, x: &[f64]) -> f64 {
-        let hidden_outputs = self
-            .hidden_layer
-            .iter()
-            .zip(x)
-            .map(|(neuron, &input)| neuron.forward(&[input]))
-            .collect::<Vec<f64>>();
-        self.output_layer.forward(&hidden_outputs)
-    }
-
-    fn train(&mut self, input: &[f64], expected: f64, learning_rate: f64) -> f64 {
-        let hidden_outputs: Vec<f64> = self
-            .hidden_layer
-            .iter()
-            .zip(input.iter())
-            .map(|(n, &input)| n.forward(&[input]))
-            .collect();
-        let y_pred = self.output_layer.forward(&hidden_outputs);
-        let loss = (expected - y_pred).powi(2);
-
-        let gradient = expected - y_pred;
-        let gradient_hidden = self
-            .output_layer
-            .backwards(&hidden_outputs, gradient, learning_rate);
-
-        for (i, (neuron, &input)) in self.hidden_layer.iter_mut().zip(input).enumerate() {
-            neuron.backwards(&[input], gradient_hidden[i], learning_rate);
-        }
-
-        loss
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_layer() {
-        let mut network = TwoLayerNetwork::new();
-        let learning_rate = 0.01;
-
-        let data = vec![
-            (vec![2.0, 1.0], 5.0),
-            (vec![1.0, 2.0], 4.0),
-            (vec![3.0, 3.0], 9.0),
-        ];
-
-        for epoch in 1..1000 {
-            let mut total_loss = 0.0;
-            for (input, expected) in &data {
-                total_loss += network.train(&input[..], *expected, learning_rate);
-            }
-            if epoch % 100 == 0 {
-                println!("Epoch: {}, Loss: {}", epoch, total_loss);
-            }
-        }
-
-        println!(
-            "Input 4.0, 2.0 -> Prediction: {}",
-            network.forward(&vec![4.0, 2.0])
-        ); // Should be ~10.0
-
-        network.hidden_layer.iter().for_each(|neuron| {
-            println!("{:?}", neuron.get_weights_and_bias());
-        });
-        println!("{:?}", network.output_layer.get_weights_and_bias());
-    }
 
     #[test]
     fn test_new_layer_structs() {
