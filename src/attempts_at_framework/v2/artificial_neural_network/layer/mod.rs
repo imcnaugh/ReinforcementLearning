@@ -5,22 +5,18 @@ use std::sync::atomic::AtomicUsize;
 
 static LAYER_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-pub struct Layer<N>
-where
-    N: Neuron,
-{
+pub struct Layer {
     id: usize,
     name: Option<String>,
-    neurons: Vec<N>,
+    neurons: Vec<Box<dyn Neuron>>,
     input_count: usize,
 }
 
-impl<N: Neuron> Layer<N> {
-    pub fn new(neuron_count: usize, input_count: usize) -> Self
-    where
-        N: Neuron + 'static,
-    {
-        let neurons = (0..neuron_count).map(|_| N::new(input_count)).collect();
+impl Layer {
+    pub fn new<N: Neuron + 'static>(neuron_count: usize, input_count: usize) -> Self {
+        let neurons = (0..neuron_count)
+            .map(|_| Box::new(N::new(input_count)) as Box<dyn Neuron>)
+            .collect();
         let id = LAYER_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Layer {
             id,
@@ -34,7 +30,7 @@ impl<N: Neuron> Layer<N> {
         self.id
     }
 
-    pub fn get_neurons(&self) -> &Vec<N> {
+    pub fn get_neurons(&self) -> &Vec<Box<dyn Neuron>> {
         &self.neurons
     }
 
@@ -72,8 +68,8 @@ mod tests {
         let test_date = vec![4.0, 2.0];
         let test_expected = 10.0;
 
-        let mut hidden_layer = Layer::<ReluNeuron>::new(2, 2);
-        let mut output_layer = Layer::<LinearNeuron>::new(1, 2);
+        let mut hidden_layer = Layer::new::<ReluNeuron>(2, 2);
+        let mut output_layer = Layer::new::<LinearNeuron>(1, 2);
 
         for epoch in 1..1000 {
             let mut total_loss = 0.0;
