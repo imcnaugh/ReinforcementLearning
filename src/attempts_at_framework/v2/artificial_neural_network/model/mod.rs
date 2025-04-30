@@ -22,7 +22,7 @@ where
             .fold(input, |acc, layer| layer.forward(&acc))
     }
 
-    pub fn train(&mut self, input: Vec<f64>, expected: Vec<f64>, learning_rate: f64) {
+    pub fn train(&mut self, input: Vec<f64>, expected: Vec<f64>, learning_rate: f64) -> f64 {
         let mut layer_inputs = self
             .layers
             .iter()
@@ -35,7 +35,7 @@ where
         // removing the last element as that is from the output layer and is the prediction
         let prediction = layer_inputs.pop().unwrap();
 
-        let _loss = self.loss_function.calculate_loss(&expected, &prediction);
+        let loss = self.loss_function.calculate_loss(&expected, &prediction);
 
         /*
         Hot dam ok this needs an explanation, this logic finds the gradient of the output layer
@@ -63,7 +63,9 @@ where
             .for_each(|(layer, inputs)| {
                 // TODO might need to add to total loss, figure that out
                 gradient = layer.backwards(&inputs, &gradient, learning_rate);
-            })
+            });
+
+        loss
     }
 }
 
@@ -99,9 +101,13 @@ mod test {
         ];
 
         for epoch in 1..1000 {
-            data.iter().for_each(|(input, expected)| {
-                model.train(input.clone(), vec![expected.clone()], learning_rate);
-            })
+            let total_loss: f64 /* Type */ = data.iter().map(|(input, expected)| {
+                model.train(input.clone(), vec![expected.clone()], learning_rate)
+            }).sum();
+
+            if epoch % 100 == 0 {
+                println!("Epoch: {} Loss: {}", epoch, total_loss);
+            }
         }
 
         let test_date = vec![4.0, 2.0];
