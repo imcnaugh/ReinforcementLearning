@@ -1,21 +1,28 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::layer::Layer;
 use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::LossFunction;
-use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
 
-pub struct Model<L>
-where
-    L: LossFunction,
-{
+pub struct Model {
     name: String,
     version: String,
     layers: Vec<Box<Layer>>,
-    loss_function: L,
+    loss_function: Box<dyn LossFunction>,
 }
 
-impl<L> Model<L>
-where
-    L: LossFunction,
-{
+impl Model {
+    pub fn new(
+        name: String,
+        version: String,
+        layers: Vec<Box<Layer>>,
+        loss_function: Box<dyn LossFunction>,
+    ) -> Self {
+        Self {
+            name,
+            version,
+            layers,
+            loss_function,
+        }
+    }
+
     pub fn predict(&self, input: Vec<f64>) -> Vec<f64> {
         self.layers
             .iter()
@@ -67,6 +74,10 @@ where
 
         loss
     }
+
+    pub fn get_loss_function(&self) -> &dyn LossFunction {
+        self.loss_function.as_ref()
+    }
 }
 
 #[cfg(test)]
@@ -90,7 +101,7 @@ mod test {
             name: "test".to_string(),
             version: "1.0".to_string(),
             layers,
-            loss_function: MeanSquaredError,
+            loss_function: Box::new(MeanSquaredError),
         };
 
         let learning_rate = 0.01;
