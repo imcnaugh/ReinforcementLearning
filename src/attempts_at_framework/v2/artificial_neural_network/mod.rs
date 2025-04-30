@@ -1,4 +1,4 @@
 mod layer;
-mod loss_functions;
-mod model;
+pub mod loss_functions;
+pub mod model;
 mod neuron;

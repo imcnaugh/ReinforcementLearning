@@ -1,6 +1,8 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::layer::Layer;
 use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::LossFunction;
 
+pub mod model_builder;
+
 pub struct Model {
     name: String,
     version: String,

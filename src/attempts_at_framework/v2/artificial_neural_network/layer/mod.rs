@@ -1,5 +1,3 @@
-mod model_builder;
-
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::linear_neuron::LinearNeuron;
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::relu_neuron::ReluNeuron;
 use crate::attempts_at_framework::v2::artificial_neural_network::neuron::Neuron;
