@@ -24,42 +24,65 @@ where
         .set_loss_function(Box::new(MeanSquaredError))
         .set_input_size(starting_state.get_values().len());
 
-    layers.into_iter().for_each(|l| { model_builder.add_layer(l); });
+    layers.into_iter().for_each(|l| {
+        model_builder.add_layer(l);
+    });
 
     let mut model = model_builder.build().unwrap();
 
     (0..episode_count).for_each(|_| {
         let mut current_state = starting_state.clone();
-        let mut next_state: Option<S> = None;
-        let mut queue: VecDeque<Option<(f64, Vec<f64>)>> = VecDeque::new();
-        (0..n).for_each(|_| queue.push_front(None));
-        let mut sliding_reward_total = 0.0;
+        let mut queue: VecDeque<(S, f64)> = VecDeque::new();
+        let mut rewards: VecDeque<f64> = VecDeque::new();
 
-        while !queue.is_empty() {
-            if !current_state.is_terminal() {
-                let action = select_action(&current_state, &policy);
-                let (reward, ns) = current_state.take_action(&action);
-                if !ns.is_terminal() {
-                    queue.push_front(Some((reward, current_state.get_values().clone())));
+        while !current_state.is_terminal() {
+            // Take action and get next state and reward
+            let action = select_action(&current_state, &policy);
+            let (reward, next_state) = current_state.take_action(&action);
+
+            // Store state and reward
+            queue.push_back((current_state.clone(), reward));
+            rewards.push_back(reward);
+
+            // Update n-step return when we have enough samples
+            if queue.len() >= n {
+                let (old_state, _) = queue.pop_front().unwrap();
+                let mut n_step_return = 0.0;
+
+                // Calculate n-step return
+                for (i, r) in rewards.iter().enumerate() {
+                    n_step_return += discount_rate.powi(i as i32) * r;
                 }
-                next_state = Some(ns);
-                sliding_reward_total += reward;
+
+                // Add bootstrap value if not at terminal state
+                if !next_state.is_terminal() {
+                    n_step_return +=
+                        discount_rate.powi(n as i32) * model.predict(next_state.get_values())[0];
+                }
+
+                // Train the model
+                model.train(old_state.get_values(), vec![n_step_return], learning_rate);
+
+                rewards.pop_front();
             }
 
-            if let Some((reward, values)) = queue.pop_back().unwrap() {
-                let expected = sliding_reward_total
-                    + (discount_rate.powi(n as i32) * model.predict(current_state.get_values())[0]);
-                model.train(values, vec![expected], learning_rate);
+            current_state = next_state;
+        }
 
-                let reward_to_remove_from_sliding_window = discount_rate.powi(n as i32) * reward;
-                sliding_reward_total -= reward_to_remove_from_sliding_window;
+        // Handle remaining states in queue
+        while !queue.is_empty() {
+            let (old_state, _) = queue.pop_front().unwrap();
+            let mut n_step_return = 0.0;
+
+            for (i, r) in rewards.iter().enumerate() {
+                n_step_return += discount_rate.powi(i as i32) * r;
             }
 
-            if let Some(ns) = next_state {
-                current_state = ns;
-                next_state = None;
+            model.train(old_state.get_values(), vec![n_step_return], learning_rate);
+
+            if !rewards.is_empty() {
+                rewards.pop_front();
             }
-            sliding_reward_total *= discount_rate;
         }
     });
 
@@ -81,20 +104,22 @@ fn select_action<S: State, P: Policy>(starting_state: &S, policy: &P) -> String 
 #[cfg(test)]
 mod tests {
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
+    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{
+        LayerBuilder, LayerType,
+    };
     use crate::attempts_at_framework::v2::state::State;
     use crate::chapter_09::nonlinear_artificial_neural_networks::n_step_td_ann;
     use crate::service::x_state_walk_environment::{WalkState, WalkStateFactory};
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, BLUE, RED};
     use std::path::PathBuf;
-    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType};
 
     #[test]
     fn random_walk_n_step_td_ann() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.001;
-        let episode_count = 1000;
+        let learning_rate = 0.0001;
+        let episode_count = 10000;
         let n = 10;
 
         // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
@@ -102,7 +127,7 @@ mod tests {
         let value_function = generate_simple_value_function(number_of_states);
 
         let layers = vec![
-            // LayerBuilder::new(LayerType::LINEAR, 2),
+            // LayerBuilder::new(LayerType::LINEAR, 1),
             // LayerBuilder::new(LayerType::RELU, 2),
             LayerBuilder::new(LayerType::LINEAR, 1),
         ];
@@ -162,10 +187,6 @@ mod tests {
         let number_of_groups = total_states / group_size;
 
         move |state| {
-            if state.is_terminal() {
-                return vec![0.0; number_of_groups];
-            }
-
             let group_id = state.get_id().parse::<usize>().unwrap() / group_size;
             let mut response = vec![0.0; number_of_groups];
             response[group_id] = 1.0;
@@ -176,21 +197,16 @@ mod tests {
     fn generate_normalized_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
         move |state| {
             let mut response = vec![0.0, 0.0];
-            if !state.is_terminal() {
                 response[0] = 1.0;
                 response[1] = state.get_id().parse::<usize>().unwrap() as f64 / total_states as f64;
-            }
             response
         }
     }
 
     fn generate_simple_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
-        move |state| {
-            if state.is_terminal() {
-                vec![0.0]
-            } else {
-                return vec![(state.get_id().parse::<usize>().unwrap() + 1) as f64  / total_states as f64]
+        move |state| {vec![
+                    (state.get_id().parse::<usize>().unwrap() + 1) as f64 / total_states as f64,
+                ]
             }
-        }
     }
 }
