@@ -18,7 +18,7 @@ impl LinearNeuron {
 impl Neuron for LinearNeuron {
     fn new(number_of_inputs: usize) -> Self {
         Self {
-            weights: vec![0.0; number_of_inputs],
+            weights: vec![1.0; number_of_inputs],
             bias: 0.0,
         }
     }

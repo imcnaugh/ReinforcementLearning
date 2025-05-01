@@ -13,6 +13,7 @@ pub fn n_step_td_ann<S, P>(
     n: usize,
     episode_count: usize,
     learning_rate: f64,
+    layers: Vec<LayerBuilder>,
 ) -> Model
 where
     S: State,
@@ -23,9 +24,7 @@ where
         .set_loss_function(Box::new(MeanSquaredError))
         .set_input_size(starting_state.get_values().len());
 
-    // model_builder.add_layer(LayerBuilder::new(LayerType::LINEAR, 2));
-    // model_builder.add_layer(LayerBuilder::new(LayerType::RELU, 2));
-    model_builder.add_layer(LayerBuilder::new(LayerType::LINEAR, 1));
+    layers.into_iter().for_each(|l| { model_builder.add_layer(l); });
 
     let mut model = model_builder.build().unwrap();
 
@@ -88,17 +87,25 @@ mod tests {
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::{ShapeStyle, BLUE, RED};
     use std::path::PathBuf;
+    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType};
 
     #[test]
     fn random_walk_n_step_td_ann() {
         let number_of_states = 1000;
         let discount_rate = 1.0;
-        let learning_rate = 0.0001;
-        let episode_count = 10000;
+        let learning_rate = 0.001;
+        let episode_count = 1000;
         let n = 10;
 
         // let value_function = generate_state_aggregation_value_function(number_of_states, 100);
-        let value_function = generate_normalized_value_function(number_of_states);
+        // let value_function = generate_normalized_value_function(number_of_states);
+        let value_function = generate_simple_value_function(number_of_states);
+
+        let layers = vec![
+            // LayerBuilder::new(LayerType::LINEAR, 2),
+            // LayerBuilder::new(LayerType::RELU, 2),
+            LayerBuilder::new(LayerType::LINEAR, 1),
+        ];
 
         let state_factory = WalkStateFactory::new(number_of_states, 100, &value_function).unwrap();
 
@@ -111,6 +118,7 @@ mod tests {
             n,
             episode_count,
             learning_rate,
+            layers,
         );
 
         let data_points: Vec<(f32, f32)> = (0..number_of_states)
@@ -143,6 +151,8 @@ mod tests {
         ));
 
         line_chart_builder.create_chart().unwrap();
+
+        learned_model.print_weights();
     }
 
     fn generate_state_aggregation_value_function(
@@ -171,6 +181,16 @@ mod tests {
                 response[1] = state.get_id().parse::<usize>().unwrap() as f64 / total_states as f64;
             }
             response
+        }
+    }
+
+    fn generate_simple_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
+        move |state| {
+            if state.is_terminal() {
+                vec![0.0]
+            } else {
+                return vec![(state.get_id().parse::<usize>().unwrap() + 1) as f64  / total_states as f64]
+            }
         }
     }
 }

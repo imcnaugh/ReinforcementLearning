@@ -80,6 +80,20 @@ impl Model {
     pub fn get_loss_function(&self) -> &dyn LossFunction {
         self.loss_function.as_ref()
     }
+    
+    pub fn print_weights(&self) {
+        let display_text = self.layers.iter().enumerate().map(|(layer_index, layer)| {
+            let layers_neuron_display = layer.get_neurons().iter().enumerate().map(|(neuron_index, neuron)| {
+                let (weights, bias) = neuron.get_weights_and_bias();
+                let weights_display = weights.iter().map(|weight| weight.to_string()).collect::<Vec<String>>().join(", ");
+                let bias_display = bias.to_string();
+                format!("{}: [{}], {}", neuron_index, weights_display, bias_display)
+            }).collect::<Vec<String>>().join("\n");
+            format!("Layer {}: \n{}", layer_index, layers_neuron_display)
+        });
+
+        println!("{}", display_text.collect::<Vec<String>>().join("\n\n"));
+    }
 }
 
 #[cfg(test)]
