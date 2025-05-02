@@ -7,6 +7,7 @@ pub mod chapter_06;
 pub mod chapter_07;
 pub mod chapter_08;
 mod chapter_09;
+mod chapter_10;
 pub mod chess_state;
 pub mod chess_state_v2;
 pub mod service;

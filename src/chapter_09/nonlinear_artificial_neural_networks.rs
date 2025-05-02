@@ -197,16 +197,15 @@ mod tests {
     fn generate_normalized_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
         move |state| {
             let mut response = vec![0.0, 0.0];
-                response[0] = 1.0;
-                response[1] = state.get_id().parse::<usize>().unwrap() as f64 / total_states as f64;
+            response[0] = 1.0;
+            response[1] = state.get_id().parse::<usize>().unwrap() as f64 / total_states as f64;
             response
         }
     }
 
     fn generate_simple_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
-        move |state| {vec![
-                    (state.get_id().parse::<usize>().unwrap() + 1) as f64 / total_states as f64,
-                ]
-            }
+        move |state| {
+            vec![(state.get_id().parse::<usize>().unwrap() + 1) as f64 / total_states as f64]
+        }
     }
 }
