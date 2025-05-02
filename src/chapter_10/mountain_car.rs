@@ -23,7 +23,7 @@ mod tests {
     use super::*;
     use crate::service::{LineChartBuilder, LineChartData};
     use plotters::prelude::full_palette::PURPLE;
-    use plotters::prelude::{ShapeStyle, BLUE, GREEN, RED};
+    use plotters::prelude::{ShapeStyle, BLACK, BLUE, GREEN, RED};
     use std::path::PathBuf;
 
     #[test]
@@ -38,19 +38,23 @@ mod tests {
             x_position: 0.0,
             velocity: 0.0,
         };
+        let mut reverse_car = MountainCar {
+            time_step: 0,
+            x_position: 0.0,
+            velocity: 0.0,
+        };
 
         let mut go_car_x_over_time: Vec<(f32, f32)> = Vec::new();
         let mut neutral_car_x_over_time: Vec<(f32, f32)> = Vec::new();
+        let mut reverse_car_x_over_time: Vec<(f32, f32)> = Vec::new();
 
-        for tick in 0..100 {
+        for tick in 0..1000 {
             go_car_x_over_time.push((tick as f32, go_car.x_position as f32));
             neutral_car_x_over_time.push((tick as f32, neutral_car.x_position as f32));
+            reverse_car_x_over_time.push((tick as f32, reverse_car.x_position as f32));
             go_car.tick(1.0);
             neutral_car.tick(0.0);
-            println!(
-                "time: {}, x: {}, v: {}",
-                go_car.time_step, go_car.x_position, go_car.velocity
-            )
+            reverse_car.tick(-1.0);
         }
 
         let go_car_data = LineChartData::new(
@@ -63,10 +67,15 @@ mod tests {
             neutral_car_x_over_time,
             ShapeStyle::from(&PURPLE),
         );
+        let reverse_car_data = LineChartData::new(
+            "always reverse".to_string(),
+            reverse_car_x_over_time,
+            ShapeStyle::from(&RED),
+        );
         let track_width = LineChartData::new(
             "track width".to_string(),
             vec![(0.0, -1.2), (0.0, 0.5)],
-            ShapeStyle::from(&RED),
+            ShapeStyle::from(&BLACK),
         );
 
         let mut chart_builder = LineChartBuilder::new();
@@ -77,6 +86,7 @@ mod tests {
             .set_path(PathBuf::from("output/chapter10/mountain_car_x_pos.png"))
             .add_data(go_car_data)
             .add_data(neutral_car_data)
+            .add_data(reverse_car_data)
             .add_data(track_width);
 
         chart_builder.create_chart().unwrap();
