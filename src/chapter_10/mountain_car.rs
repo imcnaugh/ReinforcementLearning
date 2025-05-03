@@ -3,6 +3,25 @@ pub const VELOCITY_UPPER_BOUND: f64 = 0.07;
 pub const POSITION_LOWER_BOUND: f64 = -1.2;
 pub const POSITION_UPPER_BOUND: f64 = 0.5;
 
+#[derive(Debug, Clone, Copy)]
+pub enum CarAction {
+    Forward,
+    Neutral,
+    Reverse,
+}
+
+impl CarAction {
+    pub fn get_acceleration(&self) -> f64 {
+        match self {
+            CarAction::Forward => 1.0,
+            CarAction::Neutral => 0.0,
+            CarAction::Reverse => -1.0,
+        }
+    }
+
+    pub const COUNT: usize = 3;
+}
+
 pub struct MountainCar {
     x_position: f64,
     velocity: f64,
@@ -16,8 +35,8 @@ impl MountainCar {
         }
     }
 
-    pub fn tick(&mut self, acceleration: f64) {
-        let new_velocity = ((self.velocity + (0.001 * acceleration))
+    pub fn tick(&mut self, action: &CarAction) {
+        let new_velocity = ((self.velocity + (0.001 * action.get_acceleration()))
             - (0.0025 * f64::cos(3.0 * self.x_position)))
         .clamp(VELOCITY_LOWER_BOUND, VELOCITY_UPPER_BOUND);
 
@@ -68,9 +87,9 @@ mod tests {
             go_car_x_over_time.push((tick as f32, go_car.x_position as f32));
             neutral_car_x_over_time.push((tick as f32, neutral_car.x_position as f32));
             reverse_car_x_over_time.push((tick as f32, reverse_car.x_position as f32));
-            go_car.tick(1.0);
-            neutral_car.tick(0.0);
-            reverse_car.tick(-1.0);
+            go_car.tick(&CarAction::Forward);
+            neutral_car.tick(&CarAction::Neutral);
+            reverse_car.tick(&CarAction::Reverse);
         }
 
         let go_car_data = LineChartData::new(
