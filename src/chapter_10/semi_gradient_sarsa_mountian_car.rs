@@ -32,10 +32,7 @@ pub fn semi_gradient_sarsa_mountain_car(
                     &mut weights,
                     learning_rate,
                     error,
-                    get_values_for_mountain_car(
-                        &MountainCar::new(orig_position, orig_velocity),
-                        action,
-                    ),
+                    get_values_for_mountain_car(orig_position, orig_velocity, action),
                 );
             } else {
                 let next_action = select_action_for_mountain_car(&car, &weights);
@@ -52,7 +49,11 @@ pub fn semi_gradient_sarsa_mountain_car(
                     &mut weights,
                     learning_rate,
                     error,
-                    get_values_for_mountain_car(&car, next_action),
+                    get_values_for_mountain_car(
+                        car.get_x_position(),
+                        car.get_velocity(),
+                        next_action,
+                    ),
                 );
 
                 action = next_action;
@@ -78,12 +79,13 @@ fn update_weights(
 }
 
 fn state_action_value(x: f64, v: f64, action: &CarAction, weights: &[f64]) -> f64 {
-    let values = get_values_for_mountain_car(&MountainCar::new(x, v), *action);
+    let values = get_values_for_mountain_car(x, v, *action);
     values.iter().zip(weights).map(|(v, w)| v * w).sum()
 }
 
 fn car_action_value(car: &MountainCar, action: &CarAction, weights: &[f64]) -> f64 {
-    let values = get_values_for_mountain_car(car, action.clone());
+    let values =
+        get_values_for_mountain_car(car.get_x_position(), car.get_velocity(), action.clone());
     values.iter().zip(weights).map(|(v, w)| v * w).sum()
 }
 
@@ -92,8 +94,12 @@ fn select_action_for_mountain_car(car: &MountainCar, weights: &[f64]) -> CarActi
     if rng.gen::<f64>() < 0.1 {
         let actions = vec![CarAction::Forward, CarAction::Neutral, CarAction::Reverse];
         return actions[rng.gen_range(0..actions.len())];
-    }
+    };
 
+    get_best_action_for_car(car, weights)
+}
+
+fn get_best_action_for_car(car: &MountainCar, weights: &[f64]) -> CarAction {
     let actions: Vec<(CarAction, f64)> =
         vec![CarAction::Forward, CarAction::Neutral, CarAction::Reverse]
             .iter()
@@ -121,41 +127,56 @@ fn get_values_from_indexes(x: usize, v: usize, action: &CarAction) -> Vec<f64> {
     let buffer = mult * tiles * 2;
     let v_index = buffer + v;
     let x_index = buffer + tiles + x;
-    response[v_index] += 1.0;
-    response[x_index] += 1.0;
+    response[v_index] = 1.0;
+    response[x_index] = 1.0;
     response
 }
 
-fn get_values_for_mountain_car(car: &MountainCar, action: CarAction) -> Vec<f64> {
+fn get_values_for_mountain_car(x_pos: f64, velocity: f64, action: CarAction) -> Vec<f64> {
     let tiles = 8;
 
     let v_diff = VELOCITY_UPPER_BOUND - VELOCITY_LOWER_BOUND;
     let v_step = v_diff / (tiles as f64);
-    let v_index = ((car.get_velocity() - VELOCITY_LOWER_BOUND) / v_step) as usize;
+    let v_index = ((velocity - VELOCITY_LOWER_BOUND) / v_step) as usize;
 
     let x_diff = POSITION_UPPER_BOUND - POSITION_LOWER_BOUND;
     let x_step = x_diff / (tiles as f64);
-    let x_index = ((car.get_x_position() - POSITION_LOWER_BOUND) / x_step) as usize;
+    let x_index = ((x_pos - POSITION_LOWER_BOUND) / x_step) as usize;
 
     get_values_from_indexes(x_index, v_index, &action)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::chapter_10::mountain_car::{CarAction, MountainCar};
+    use crate::chapter_10::mountain_car::{CarAction, MountainCar, POSITION_UPPER_BOUND};
     use crate::chapter_10::semi_gradient_sarsa_mountian_car::{
-        get_values_for_mountain_car, semi_gradient_sarsa_mountain_car,
+        get_best_action_for_car, get_values_for_mountain_car, semi_gradient_sarsa_mountain_car,
     };
 
     #[test]
     fn idk() {
         let car = MountainCar::new(0.0, 0.0);
-        let values = get_values_for_mountain_car(&car, CarAction::Reverse);
+        let values = get_values_for_mountain_car(
+            car.get_x_position(),
+            car.get_velocity(),
+            CarAction::Reverse,
+        );
         assert_eq!(values.len(), 8 * 2 * CarAction::COUNT);
     }
 
     #[test]
     fn learn() {
         let weights = semi_gradient_sarsa_mountain_car(0.5 / 8.0, 1.0, 100);
+
+        let mut test_car = MountainCar::new(0.0, 0.0);
+        let mut x_pos_and_action: Vec<(f64, CarAction)> = vec![];
+
+        while test_car.get_x_position() != POSITION_UPPER_BOUND {
+            let action = get_best_action_for_car(&test_car, &weights);
+            x_pos_and_action.push((test_car.get_x_position(), action));
+            test_car.tick(&action);
+        }
+
+        println!("{:?}", x_pos_and_action);
     }
 }
