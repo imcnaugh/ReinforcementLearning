@@ -63,7 +63,7 @@ impl MountainCar {
         let new_x_position =
             (self.x_position + new_velocity).clamp(POSITION_LOWER_BOUND, POSITION_UPPER_BOUND);
 
-        self.velocity = new_velocity;
+        self.velocity = new_velocity * 0.99;
         self.x_position = new_x_position;
     }
 
