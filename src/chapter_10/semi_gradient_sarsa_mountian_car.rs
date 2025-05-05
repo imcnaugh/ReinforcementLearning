@@ -1,6 +1,6 @@
 use crate::chapter_10::mountain_car::{
-    CarAction, MountainCar, POSITION_LOWER_BOUND, POSITION_UPPER_BOUND, VELOCITY_LOWER_BOUND,
-    VELOCITY_UPPER_BOUND,
+    feature_vector, CarAction, MountainCar, POSITION_LOWER_BOUND, POSITION_UPPER_BOUND,
+    VELOCITY_LOWER_BOUND, VELOCITY_UPPER_BOUND,
 };
 use rand::Rng;
 
@@ -25,36 +25,23 @@ pub fn semi_gradient_sarsa_mountain_car(
             let terminal = car.get_x_position() == POSITION_UPPER_BOUND;
             let reward = if terminal { 0.0 } else { -1.0 };
 
+            let original_feature_vector = feature_vector(orig_position, orig_velocity, action);
+            let original_state_estimate_value =
+                state_action_value(&original_feature_vector, &weights);
+
             if terminal {
-                let error =
-                    reward - state_action_value(orig_position, orig_velocity, &action, &weights);
-                update_weights(
-                    &mut weights,
-                    learning_rate,
-                    error,
-                    get_values_for_mountain_car(orig_position, orig_velocity, action),
-                );
+                let error = reward - original_state_estimate_value;
+                update_weights(&mut weights, learning_rate, error, original_feature_vector);
             } else {
                 let next_action = select_action_for_mountain_car(&car, &weights);
 
-                let new_state_action_value = state_action_value(
-                    car.get_x_position(),
-                    car.get_velocity(),
-                    &next_action,
-                    &weights,
-                );
-                let error = reward + (discount_factor * new_state_action_value)
-                    - state_action_value(orig_position, orig_velocity, &action, &weights);
-                update_weights(
-                    &mut weights,
-                    learning_rate,
-                    error,
-                    get_values_for_mountain_car(
-                        car.get_x_position(),
-                        car.get_velocity(),
-                        next_action,
-                    ),
-                );
+                let feature_vector =
+                    feature_vector(car.get_x_position(), car.get_velocity(), next_action);
+                let next_state_estimated_value = state_action_value(&feature_vector, &weights);
+
+                let error = reward + (discount_factor * next_state_estimated_value)
+                    - original_state_estimate_value;
+                update_weights(&mut weights, learning_rate, error, original_feature_vector);
 
                 action = next_action;
             }
@@ -78,9 +65,8 @@ fn update_weights(
     }
 }
 
-fn state_action_value(x: f64, v: f64, action: &CarAction, weights: &[f64]) -> f64 {
-    let values = get_values_for_mountain_car(x, v, *action);
-    values.iter().zip(weights).map(|(v, w)| v * w).sum()
+fn state_action_value(feature_vector: &[f64], weights: &[f64]) -> f64 {
+    feature_vector.iter().zip(weights).map(|(v, w)| v * w).sum()
 }
 
 fn car_action_value(car: &MountainCar, action: &CarAction, weights: &[f64]) -> f64 {
@@ -176,7 +162,5 @@ mod tests {
             x_pos_and_action.push((test_car.get_x_position(), action));
             test_car.tick(&action);
         }
-
-        println!("{:?}", x_pos_and_action);
     }
 }

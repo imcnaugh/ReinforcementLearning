@@ -3,6 +3,26 @@ pub const VELOCITY_UPPER_BOUND: f64 = 0.07;
 pub const POSITION_LOWER_BOUND: f64 = -1.2;
 pub const POSITION_UPPER_BOUND: f64 = 0.5;
 
+pub fn feature_vector(x_position: f64, velocity: f64, action: CarAction) -> Vec<f64> {
+    const TILES: usize = 8;
+    const VELOCITY_TILE_SIZE: f64 = (VELOCITY_UPPER_BOUND - VELOCITY_LOWER_BOUND) / TILES as f64;
+    const POSITION_TILE_SIZE: f64 = (POSITION_UPPER_BOUND - POSITION_LOWER_BOUND) / TILES as f64;
+
+    let velocity_tile = ((velocity - VELOCITY_LOWER_BOUND) / VELOCITY_TILE_SIZE) as usize;
+    let position_tile = TILES + ((x_position - POSITION_LOWER_BOUND) / POSITION_TILE_SIZE) as usize;
+
+    let action_buffer = match action {
+        CarAction::Forward => 0,
+        CarAction::Neutral => TILES * 2,
+        CarAction::Reverse => 2 * TILES * 2,
+    };
+
+    let mut response = vec![0.0; TILES * 2 * CarAction::COUNT];
+    response[action_buffer + velocity_tile] = 1.0;
+    response[action_buffer + position_tile] = 1.0;
+    response
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum CarAction {
     Forward,
