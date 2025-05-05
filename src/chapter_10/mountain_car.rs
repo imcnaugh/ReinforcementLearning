@@ -23,7 +23,7 @@ pub fn feature_vector(x_position: f64, velocity: f64, action: CarAction) -> Vec<
     response
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum CarAction {
     Forward,
     Neutral,

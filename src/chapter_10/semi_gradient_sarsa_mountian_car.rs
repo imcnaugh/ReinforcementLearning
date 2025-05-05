@@ -2,7 +2,8 @@ use crate::chapter_10::mountain_car::{
     feature_vector, CarAction, MountainCar, POSITION_LOWER_BOUND, POSITION_UPPER_BOUND,
     VELOCITY_LOWER_BOUND, VELOCITY_UPPER_BOUND,
 };
-use rand::Rng;
+use rand::prelude::IndexedRandom;
+use rand::{rng, Rng};
 
 pub fn semi_gradient_sarsa_mountain_car(
     learning_rate: f64,
@@ -11,9 +12,18 @@ pub fn semi_gradient_sarsa_mountain_car(
 ) -> Vec<f64> {
     let mut weights = vec![0.0; 8 * 2 * CarAction::COUNT];
 
+    let starting_x_positions: Vec<f64> = (0..100)
+        .map(|i| {
+            let increment = 0.2 / 100.0;
+            -0.6 + increment * i as f64
+        })
+        .collect();
+
     for episode_number in 0..episodes {
-        let starting_x_position = 0.0;
-        let mut car = MountainCar::new(starting_x_position, 0.0);
+        let starting_x_position = starting_x_positions
+            .choose(&mut rand::thread_rng())
+            .unwrap();
+        let mut car = MountainCar::new(*starting_x_position, 0.0);
         let mut action = select_action_for_mountain_car(&car, &weights);
 
         let mut ticks: usize = 0;
@@ -138,6 +148,12 @@ mod tests {
     use crate::chapter_10::semi_gradient_sarsa_mountian_car::{
         get_best_action_for_car, get_values_for_mountain_car, semi_gradient_sarsa_mountain_car,
     };
+    use crate::service::{LineChartBuilder, LineChartData};
+    use plotters::prelude::full_palette::GREEN_900;
+    use plotters::prelude::{ShapeStyle, GREEN};
+    use plotters::style::full_palette::{BLUE_500, RED_500, YELLOW_500};
+    use plotters::style::{RED, YELLOW};
+    use std::path::PathBuf;
 
     #[test]
     fn idk() {
@@ -154,13 +170,46 @@ mod tests {
     fn learn() {
         let weights = semi_gradient_sarsa_mountain_car(0.5 / 8.0, 1.0, 100);
 
-        let mut test_car = MountainCar::new(0.0, 0.0);
+        let mut test_car = MountainCar::new(-0.6, 0.0);
         let mut x_pos_and_action: Vec<(f64, CarAction)> = vec![];
 
-        while test_car.get_x_position() != POSITION_UPPER_BOUND {
+        for i in 0..500 {
+            if test_car.get_x_position() == POSITION_UPPER_BOUND {
+                break;
+            }
             let action = get_best_action_for_car(&test_car, &weights);
             x_pos_and_action.push((test_car.get_x_position(), action));
             test_car.tick(&action);
         }
+
+        let mut chart_builder = LineChartBuilder::new();
+
+        let mut previous_action = x_pos_and_action[0].1;
+        let mut relevant_data: Vec<(f32, f32)> = vec![];
+
+        for (index, (x_pos, action)) in x_pos_and_action.iter().enumerate() {
+            if *action != previous_action {
+                let color = match previous_action {
+                    CarAction::Forward => ShapeStyle::from(&GREEN_900),
+                    CarAction::Neutral => ShapeStyle::from(&BLUE_500),
+                    CarAction::Reverse => ShapeStyle::from(&RED_500),
+                };
+                chart_builder.add_data(LineChartData::new("".to_string(), relevant_data, color));
+                relevant_data = vec![];
+            }
+            relevant_data.push((index as f32, *x_pos as f32));
+            previous_action = *action;
+        }
+
+        let color = match previous_action {
+            CarAction::Forward => ShapeStyle::from(&GREEN_900),
+            CarAction::Neutral => ShapeStyle::from(&BLUE_500),
+            CarAction::Reverse => ShapeStyle::from(&RED_500),
+        };
+        chart_builder.add_data(LineChartData::new("".to_string(), relevant_data, color));
+
+        chart_builder.set_path(PathBuf::from("output/chapter10/trained_mountain_car.png"));
+
+        chart_builder.create_chart().unwrap();
     }
 }
