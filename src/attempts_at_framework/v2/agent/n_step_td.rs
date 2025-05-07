@@ -88,6 +88,10 @@ impl NStepTD {
     /// the model to chose moves going forward. I could use a heuristic
     /// search of depth 2 to get back to states where its my move. but
     /// that feels bad when I type it out.
+    ///
+    /// Ugh according to DeepSeek its best to use a Policy Gradient method
+    /// for this type of task, that's covered in chapter 13. So time to get
+    /// back to reading, but ill be back!c
     fn select_next_action<S: State>(&self, state: &S) -> String {
         state
             .get_actions()
