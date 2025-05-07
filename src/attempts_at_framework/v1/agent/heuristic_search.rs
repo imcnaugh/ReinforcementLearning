@@ -3,7 +3,9 @@ use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::piece::{ChessPiece, PieceType};
 use simple_chess::{ChessGame, ChessMoveType, Color};
 
-pub fn get_best_action(game: &mut ChessGame, depth: usize) -> String {
+pub fn get_best_action_heuristic_search(game: &mut ChessGame, depth: usize) -> String {
+    println!("selecting move with a heuristic depth of: {}", depth);
+
     let player_color = game.get_current_players_turn();
 
     let idk = idk(game, depth, player_color);

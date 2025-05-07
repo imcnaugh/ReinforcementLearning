@@ -1,14 +1,17 @@
 use eframe::egui;
 use egui::Ui;
+use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::forsyth_edwards_notation::{
     build_game_from_string, encode_game_as_string, ForsythEdwardsNotationError,
 };
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
-use ReinforcementLearning::attempts_at_framework::v1::agent::{get_best_action, NStepSarsa};
-use ReinforcementLearning::attempts_at_framework::v1::policy::DeterministicPolicy;
-use ReinforcementLearning::chess_state::ChessState;
+use ReinforcementLearning::attempts_at_framework::v1::agent::{
+    get_best_action_heuristic_search, NStepSarsa,
+};
+use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
+use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -27,9 +30,9 @@ fn main() {
 }
 
 enum LearningMethod {
-    N_STEP_SARSA,
-    HEURISTIC_SEARCH,
-    NEURAL_NETWORK,
+    NStepSarsa,
+    HeuristicSearch,
+    NeuralNetwork,
 }
 
 struct MyApp {
@@ -46,6 +49,9 @@ struct MyApp {
     fen_string_input: String,
     learning_method: LearningMethod,
 }
+
+const NEW_GAME_FEN_STRING: &'static str =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 impl MyApp {
     pub fn new() -> Self {
@@ -64,7 +70,7 @@ impl MyApp {
             num_episodes_to_learn_for: 0,
             heuristic_depth: 1,
             fen_string_input: String::from(""),
-            learning_method: LearningMethod::HEURISTIC_SEARCH,
+            learning_method: LearningMethod::HeuristicSearch,
         }
     }
 
@@ -73,7 +79,7 @@ impl MyApp {
             "Starting Learning for {} episodes",
             self.num_episodes_to_learn_for
         );
-        let mut game = ChessGame::new();
+        let mut game = build_game_from_string(&self.fen_string_input).unwrap_or(ChessGame::new());
         let possible_first_moves = match game.get_game_state() {
             GameState::InProgress { legal_moves, .. } => legal_moves,
             _ => panic!("Game should be in progress at this point"),
@@ -81,7 +87,7 @@ impl MyApp {
         let first_states = possible_first_moves
             .iter()
             .map(|m| {
-                let mut g = ChessGame::new();
+                let mut g = game.clone();
                 g.make_move(m.clone());
                 let fen_string = encode_game_as_string(&g);
                 ChessState::new(fen_string)
@@ -117,19 +123,15 @@ impl MyApp {
                     Some((_, _, m)) => {
                         self.previous_moves.push(m.clone());
                         self.chess_game.make_move(*m);
-                        self.game_state = self.chess_game.get_game_state();
 
-                        let next_action = match &self.game_state {
+                        let game_state = &self.chess_game.get_game_state();
+                        let next_action = match game_state {
                             GameState::InProgress { legal_moves, .. } => {
-                                let (m, on_policy) = self.select_and_make_move(legal_moves);
-                                self.last_move_made_on_policy_string =
-                                    Some(format!("on policy: {:?}", on_policy));
+                                let m = self.select_and_make_move(legal_moves);
                                 Some(m)
                             }
                             GameState::Check { legal_moves, .. } => {
-                                let (m, on_policy) = self.select_and_make_move(legal_moves);
-                                self.last_move_made_on_policy_string =
-                                    Some(format!("on policy: {:?}", on_policy));
+                                let m = self.select_and_make_move(legal_moves);
                                 Some(m)
                             }
                             GameState::Checkmate { .. } => None,
@@ -150,37 +152,41 @@ impl MyApp {
         }
     }
 
-    fn select_and_make_move(&self, legal_moves: &Vec<ChessMoveType>) -> (ChessMoveType, bool) {
-        // let game_as_fen_string = encode_game_as_string(&self.chess_game);
-        // let new_state_id = get_state_id_from_fen_string(&game_as_fen_string);
-        // match self.policy_for_black.select_action_for_state(&new_state_id) {
-        //     Ok(a) => (
-        //         legal_moves
-        //             .iter()
-        //             .find(|m| encode_move_as_long_algebraic_notation(m) == a)
-        //             .unwrap()
-        //             .clone(),
-        //         true,
-        //     ),
-        //     Err(_) => {
-        //         let mut rng = rand::rng();
-        //         (legal_moves.choose(&mut rng).unwrap().clone(), false)
-        //     }
-        // }
+    pub fn get_best_action_n_step_sarsa(
+        &mut self,
+        game: &mut ChessGame,
+        legal_moves: &Vec<ChessMoveType>,
+    ) -> String {
+        let new_state_id = get_state_id_from_fen_string(&encode_game_as_string(&game));
+        match self.policy_for_black.select_action_for_state(&new_state_id) {
+            Ok(a) => {
+                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", true));
+                a
+            }
+            Err(_) => {
+                self.last_move_made_on_policy_string = Some(format!("on policy: {:?}", false));
+                let m = legal_moves.choose(&mut rand::rng()).unwrap().clone();
+                encode_move_as_long_algebraic_notation(&m)
+            }
+        }
+    }
 
-        println!(
-            "selecting move with a heuristic depth of: {}",
-            self.heuristic_depth
-        );
-
+    fn select_and_make_move(&mut self, legal_moves: &Vec<ChessMoveType>) -> ChessMoveType {
         let mut game = self.chess_game.clone();
-        let next_move = get_best_action(&mut game, self.heuristic_depth);
+        let next_move = match self.learning_method {
+            LearningMethod::NStepSarsa => self.get_best_action_n_step_sarsa(&mut game, legal_moves),
+            LearningMethod::HeuristicSearch => {
+                get_best_action_heuristic_search(&mut game, self.heuristic_depth)
+            }
+            LearningMethod::NeuralNetwork => todo!(),
+        };
+
         let nm = legal_moves
             .iter()
             .find(|m| encode_move_as_long_algebraic_notation(m) == next_move)
             .unwrap()
             .clone();
-        (nm, true)
+        nm
     }
 
     fn select_piece_to_move(&mut self, row: usize, col: usize) {
@@ -322,6 +328,7 @@ impl MyApp {
                 self.selected_square = None;
                 self.possible_moves = Vec::new();
                 self.previous_moves = Vec::new();
+                self.fen_string_input = String::from(NEW_GAME_FEN_STRING);
             };
             ui.add_space(10.0);
             if ui.button("Import").clicked() {
@@ -413,13 +420,13 @@ impl MyApp {
             });
             ui.horizontal(|ui| {
                 ui.button("N-Step SARSA").clicked().then(|| {
-                    self.learning_method = LearningMethod::N_STEP_SARSA;
+                    self.learning_method = LearningMethod::NStepSarsa;
                 });
                 ui.button("Heuristic Search").clicked().then(|| {
-                    self.learning_method = LearningMethod::HEURISTIC_SEARCH;
+                    self.learning_method = LearningMethod::HeuristicSearch;
                 });
                 ui.button("Neural Network").clicked().then(|| {
-                    self.learning_method = LearningMethod::NEURAL_NETWORK;
+                    self.learning_method = LearningMethod::NeuralNetwork;
                 });
             })
         });
@@ -456,13 +463,13 @@ impl eframe::App for MyApp {
                     self.learning_method_select(ui);
                     ui.add_space(10.0);
                     match self.learning_method {
-                        LearningMethod::N_STEP_SARSA => {
+                        LearningMethod::NStepSarsa => {
                             self.learn_button(ui);
                         }
-                        LearningMethod::HEURISTIC_SEARCH => {
+                        LearningMethod::HeuristicSearch => {
                             self.depth_display(ui);
                         }
-                        LearningMethod::NEURAL_NETWORK => {}
+                        LearningMethod::NeuralNetwork => {}
                     };
                     ui.add_space(10.0);
                     self.previous_moves(ui);
