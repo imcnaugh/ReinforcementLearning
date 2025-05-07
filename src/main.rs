@@ -1,7 +1,9 @@
 use eframe::egui;
 use egui::Ui;
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::codec::forsyth_edwards_notation::encode_game_as_string;
+use simple_chess::codec::forsyth_edwards_notation::{
+    build_game_from_string, encode_game_as_string, ForsythEdwardsNotationError,
+};
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
 use ReinforcementLearning::attempts_at_framework::v1::agent::{get_best_action, NStepSarsa};
@@ -24,6 +26,12 @@ fn main() {
     .unwrap();
 }
 
+enum LearningMethod {
+    N_STEP_SARSA,
+    HEURISTIC_SEARCH,
+    NEURAL_NETWORK,
+}
+
 struct MyApp {
     chess_game: ChessGame,
     selected_square: Option<(usize, usize)>,
@@ -35,6 +43,8 @@ struct MyApp {
     agent: Box<NStepSarsa>,
     num_episodes_to_learn_for: usize,
     heuristic_depth: usize,
+    fen_string_input: String,
+    learning_method: LearningMethod,
 }
 
 impl MyApp {
@@ -53,6 +63,8 @@ impl MyApp {
             agent: Box::new(NStepSarsa::new(100, 0.5, 0.2, 1.0)),
             num_episodes_to_learn_for: 0,
             heuristic_depth: 1,
+            fen_string_input: String::from(""),
+            learning_method: LearningMethod::HEURISTIC_SEARCH,
         }
     }
 
@@ -311,6 +323,23 @@ impl MyApp {
                 self.possible_moves = Vec::new();
                 self.previous_moves = Vec::new();
             };
+            ui.add_space(10.0);
+            if ui.button("Import").clicked() {
+                match build_game_from_string(&self.fen_string_input) {
+                    Ok(game) => {
+                        self.chess_game = game;
+                        self.game_state = self.chess_game.get_game_state();
+                        self.selected_square = None;
+                        self.possible_moves = Vec::new();
+                        self.previous_moves = Vec::new();
+                    }
+                    Err(_) => {}
+                }
+            }
+            let mut raw_fen_string = self.fen_string_input.clone();
+            if ui.text_edit_singleline(&mut raw_fen_string).changed() {
+                self.fen_string_input = raw_fen_string;
+            }
         });
     }
 
@@ -330,6 +359,11 @@ impl MyApp {
 
     fn learn_button(&mut self, ui: &mut Ui) {
         ui.vertical(|ui| {
+            ui.label(
+                self.last_move_made_on_policy_string
+                    .as_ref()
+                    .unwrap_or(&String::from("")),
+            );
             ui.horizontal(|ui| {
                 if ui.button("Learn").clicked() {
                     self.do_learning();
@@ -372,6 +406,25 @@ impl MyApp {
         });
     }
 
+    fn learning_method_select(&mut self, ui: &mut Ui) {
+        ui.vertical(|ui| {
+            ui.horizontal(|ui| {
+                ui.label("Learning Method:");
+            });
+            ui.horizontal(|ui| {
+                ui.button("N-Step SARSA").clicked().then(|| {
+                    self.learning_method = LearningMethod::N_STEP_SARSA;
+                });
+                ui.button("Heuristic Search").clicked().then(|| {
+                    self.learning_method = LearningMethod::HEURISTIC_SEARCH;
+                });
+                ui.button("Neural Network").clicked().then(|| {
+                    self.learning_method = LearningMethod::NEURAL_NETWORK;
+                });
+            })
+        });
+    }
+
     fn game_status_label(&mut self, ui: &mut Ui) {
         let current_game_state = match &self.game_state {
             GameState::InProgress { turn, .. } => {
@@ -398,15 +451,19 @@ impl eframe::App for MyApp {
                 ui.vertical(|ui| {
                     self.game_status_label(ui);
                     ui.add_space(10.0);
-                    ui.label(
-                        self.last_move_made_on_policy_string
-                            .as_ref()
-                            .unwrap_or(&String::from("")),
-                    );
-                    ui.add_space(10.0);
                     self.reset_game_button(ui);
-                    // self.learn_button(ui);
-                    self.depth_display(ui);
+                    ui.add_space(10.0);
+                    self.learning_method_select(ui);
+                    ui.add_space(10.0);
+                    match self.learning_method {
+                        LearningMethod::N_STEP_SARSA => {
+                            self.learn_button(ui);
+                        }
+                        LearningMethod::HEURISTIC_SEARCH => {
+                            self.depth_display(ui);
+                        }
+                        LearningMethod::NEURAL_NETWORK => {}
+                    };
                     ui.add_space(10.0);
                     self.previous_moves(ui);
                 });
