@@ -3,7 +3,7 @@ use rand::prelude::IteratorRandom;
 use crate::attempts_at_framework::v1::policy::Policy;
 use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
 use crate::attempts_at_framework::v2::artificial_neural_network::model::Model;
-use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType, ModelBuilder};
+use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, ModelBuilder};
 use crate::attempts_at_framework::v2::state::State;
 
 pub fn n_step_td_ann<S, P>(
