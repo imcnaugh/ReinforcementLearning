@@ -1,8 +1,9 @@
 use crate::attempts_at_framework::v2::state::State;
 use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
-use simple_chess::game_board::Board;
-use simple_chess::piece::ChessPiece;
+use simple_chess::game_board::{get_column_and_row_from_square_name, Board};
+use simple_chess::piece::{ChessPiece, PieceType};
+use simple_chess::Color;
 
 #[derive(Debug, Clone)]
 pub struct ChessStateV2 {
@@ -140,21 +141,98 @@ impl State for ChessStateV2 {
     }
 
     fn get_values(&self) -> Vec<f64> {
-        let mut values = Vec::new();
-        values.push(1.0);
+        let regex = regex::Regex::new(r"^(.*) (.) (.*) (.*) (.*) (.*)").unwrap();
+        let captures = regex.captures(&self.fen_string).unwrap();
+        let parts: Vec<String> = captures
+            .iter()
+            .skip(1)
+            .map(|m| m.unwrap().as_str().to_string())
+            .collect();
 
         let width = self.board.get_width();
         let height = self.board.get_height();
+        let square_count = width * height;
+
+        let mut black_pawn_map = vec![0.0; square_count];
+        let mut white_pawn_map = vec![0.0; square_count];
+        let mut black_knight_map = vec![0.0; square_count];
+        let mut white_knight_map = vec![0.0; square_count];
+        let mut black_bishop_map = vec![0.0; square_count];
+        let mut white_bishop_map = vec![0.0; square_count];
+        let mut black_rook_map = vec![0.0; square_count];
+        let mut white_rook_map = vec![0.0; square_count];
+        let mut black_queen_map = vec![0.0; square_count];
+        let mut white_queen_map = vec![0.0; square_count];
+        let mut black_king_map = vec![0.0; square_count];
+        let mut white_king_map = vec![0.0; square_count];
 
         for x in 0..height {
             for y in 0..width {
-                match self.board.get_piece_at_space(x, y) {
-                    None => values.push(0.0),
-                    Some(p) => {}
+                if let Some(piece) = self.board.get_piece_at_space(x, y) {
+                    let (b_map, w_map) = match piece.get_piece_type() {
+                        PieceType::Pawn => (&mut black_pawn_map, &mut white_pawn_map),
+                        PieceType::Rook => (&mut black_rook_map, &mut white_rook_map),
+                        PieceType::Knight => (&mut black_knight_map, &mut white_knight_map),
+                        PieceType::Bishop => (&mut black_bishop_map, &mut white_bishop_map),
+                        PieceType::Queen => (&mut black_queen_map, &mut white_queen_map),
+                        PieceType::King => (&mut black_king_map, &mut white_king_map),
+                    };
+                    let index = x * width + y;
+                    match piece.get_color() {
+                        Color::White => {
+                            w_map[index] = 1.0;
+                        }
+                        Color::Black => {
+                            b_map[index] = 1.0;
+                        }
+                    }
                 }
             }
         }
 
+        let mut castling_rights_map = vec![0.0; 4];
+        if parts[2].contains("K") {
+            castling_rights_map[0] = 1.0;
+        }
+        if parts[3].contains("Q") {
+            castling_rights_map[1] = 1.0;
+        }
+        if parts[3].contains("k") {
+            castling_rights_map[2] = 1.0;
+        }
+        if parts[3].contains("q") {
+            castling_rights_map[3] = 1.0;
+        }
+
+        let mut en_passant_squares_map = vec![0.0; 16];
+        if parts[3] != "-" {
+            let (col, row) = get_column_and_row_from_square_name(&parts[3]).unwrap();
+            let buffer = if row == 5 { 8 } else { 0 };
+            en_passant_squares_map[col + buffer] = 1.0;
+        }
+
+        let player_turn_map = match parts[1].as_str() {
+            "w" => vec![1.0, 0.0],
+            "b" => vec![0.0, 1.0],
+            _ => vec![0.0, 0.0],
+        };
+
+        let mut values = Vec::new();
+        values.extend(black_pawn_map);
+        values.extend(white_pawn_map);
+        values.extend(black_knight_map);
+        values.extend(white_knight_map);
+        values.extend(black_bishop_map);
+        values.extend(white_bishop_map);
+        values.extend(black_rook_map);
+        values.extend(white_rook_map);
+        values.extend(black_queen_map);
+        values.extend(white_queen_map);
+        values.extend(black_king_map);
+        values.extend(white_king_map);
+        values.extend(castling_rights_map);
+        values.extend(en_passant_squares_map);
+        values.extend(player_turn_map);
         values
     }
 }

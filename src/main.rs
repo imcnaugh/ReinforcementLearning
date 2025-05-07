@@ -3,7 +3,7 @@ use egui::Ui;
 use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::codec::forsyth_edwards_notation::{
-    build_game_from_string, encode_game_as_string, ForsythEdwardsNotationError,
+    build_game_from_string, encode_game_as_string,
 };
 use simple_chess::codec::long_algebraic_notation::encode_move_as_long_algebraic_notation;
 use simple_chess::{ChessGame, ChessMoveType};
@@ -192,9 +192,10 @@ impl MyApp {
     fn select_piece_to_move(&mut self, row: usize, col: usize) {
         self.selected_square = Some((row, col));
         let moves: Vec<(usize, usize, ChessMoveType)> = match &self.game_state {
-            GameState::InProgress { legal_moves, turn } => {
-                Self::select_from_legal_moves(row, col, legal_moves)
-            }
+            GameState::InProgress {
+                legal_moves,
+                turn: _turn,
+            } => Self::select_from_legal_moves(row, col, legal_moves),
             GameState::Check { legal_moves, .. } => {
                 Self::select_from_legal_moves(row, col, legal_moves)
             }
