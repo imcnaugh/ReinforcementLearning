@@ -1,11 +1,13 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::model::Model;
 use crate::attempts_at_framework::v2::state::State;
+use rand::Rng;
 use std::collections::VecDeque;
 
 pub struct NStepTD {
     n: usize,
     discount_rate: f64,
     learning_rate: f64,
+    explore_rate: f64,
     episodes_learned_for: usize,
     model: Model,
 }
@@ -16,6 +18,7 @@ impl NStepTD {
             n,
             model,
             learning_rate,
+            explore_rate: 0.1,
             discount_rate: 1.0,
             episodes_learned_for: 0,
         }
@@ -94,14 +97,19 @@ impl NStepTD {
     fn select_next_action<S: State>(&self, state: &S) -> String {
         let actions = state.get_actions();
 
+        if rand::rng().random::<f64>() < self.explore_rate {
+            let random_index = rand::rng().random_range(0..actions.len());
+            return actions[random_index].clone();
+        }
+
         let mut best_value = f64::NEG_INFINITY;
         let mut best_action = actions.first().unwrap().clone();
 
         for action in actions {
             let state_clone = state.clone();
-            state.take_action(&action);
+            let (reward, _) = state.take_action(&action);
             let value = self.model.predict(state_clone.get_values())[0];
-            if value > best_value {
+            if (value + reward) > best_value {
                 best_action = action.clone();
                 best_value = value;
             }
@@ -118,12 +126,20 @@ impl NStepTD {
         self.learning_rate = learning_rate;
     }
 
+    pub fn set_explore_rate(&mut self, explore_rate: f64) {
+        self.explore_rate = explore_rate;
+    }
+
     pub fn get_discount_rate(&self) -> f64 {
         self.discount_rate
     }
 
     pub fn get_learning_rate(&self) -> f64 {
         self.learning_rate
+    }
+
+    pub fn get_explore_rate(&self) -> f64 {
+        self.explore_rate
     }
 
     pub fn get_episodes_learned_for(&self) -> usize {
