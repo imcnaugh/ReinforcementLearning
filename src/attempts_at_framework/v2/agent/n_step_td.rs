@@ -1,6 +1,5 @@
 use crate::attempts_at_framework::v2::artificial_neural_network::model::Model;
 use crate::attempts_at_framework::v2::state::State;
-use rand::prelude::IteratorRandom;
 use std::collections::VecDeque;
 
 pub struct NStepTD {
@@ -93,12 +92,22 @@ impl NStepTD {
     /// for this type of task, that's covered in chapter 13. So time to get
     /// back to reading, but ill be back!c
     fn select_next_action<S: State>(&self, state: &S) -> String {
-        state
-            .get_actions()
-            .iter()
-            .choose(&mut rand::rng())
-            .unwrap()
-            .clone()
+        let actions = state.get_actions();
+
+        let mut best_value = f64::NEG_INFINITY;
+        let mut best_action = actions.first().unwrap().clone();
+
+        for action in actions {
+            let state_clone = state.clone();
+            state.take_action(&action);
+            let value = self.model.predict(state_clone.get_values())[0];
+            if value > best_value {
+                best_action = action.clone();
+                best_value = value;
+            }
+        }
+
+        best_action
     }
 
     pub fn set_discount_rate(&mut self, discount_rate: f64) {
