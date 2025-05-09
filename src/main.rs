@@ -41,9 +41,9 @@ fn generate_model() -> Model {
     builder.set_loss_function(Box::new(MeanSquaredError));
     builder.set_input_size(790);
 
-    builder.add_layer(LayerBuilder::new(LINEAR, 790));
-    builder.add_layer(LayerBuilder::new(RELU, 790));
     builder.add_layer(LayerBuilder::new(LINEAR, 100));
+    builder.add_layer(LayerBuilder::new(RELU, 10));
+    builder.add_layer(LayerBuilder::new(LINEAR, 10));
     builder.add_layer(LayerBuilder::new(LINEAR, 1));
 
     let model = builder.build();
@@ -80,8 +80,9 @@ impl MyApp {
         let mut game = ChessGame::new();
         let state = game.get_game_state();
 
-        let mut agent = NStepTD::new(10, generate_model(), 1.0 / 790.0);
-        agent.set_discount_rate(1.0);
+        let mut agent = NStepTD::new(100, generate_model(), 0.0000000000000001);
+        agent.set_discount_rate(0.99);
+        agent.set_explore_rate(0.5);
 
         Self {
             chess_game: game,
@@ -129,11 +130,25 @@ impl MyApp {
 
     fn do_n_step_td_learning(&mut self) {
         println!("starting training the neural network");
-        let game = build_game_from_string(&self.fen_string_input).unwrap_or(ChessGame::new());
-        let starting_state = ChessStateV2::new(encode_game_as_string(&game));
+        let mut game = build_game_from_string(&self.fen_string_input).unwrap_or(ChessGame::new());
+        let possible_first_moves = match game.get_game_state() {
+            GameState::InProgress { legal_moves, .. } => legal_moves,
+            _ => panic!("Game should be in progress at this point"),
+        };
+
+        let first_states: Vec<ChessStateV2> = possible_first_moves
+            .iter()
+            .map(|m| {
+                let mut g = game.clone();
+                g.make_move(m.clone());
+                let fen_string = encode_game_as_string(&g);
+                ChessStateV2::new(fen_string)
+            })
+            .collect();
+
         for _ in 0..self.num_episodes_to_learn_for {
-            self.n_step_td_ann_agent
-                .learn_from_episode(starting_state.clone());
+            let starting_state = first_states.choose(&mut rand::rng()).unwrap().clone();
+            self.n_step_td_ann_agent.learn_from_episode(starting_state);
         }
         println!("Finished training the neural network");
         self.n_step_td_ann_agent.get_model().print_weights();
