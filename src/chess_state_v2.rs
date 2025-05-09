@@ -218,21 +218,21 @@ impl State for ChessStateV2 {
         };
 
         let mut values = Vec::new();
-        values.extend(black_pawn_map);
-        values.extend(white_pawn_map);
-        values.extend(black_knight_map);
-        values.extend(white_knight_map);
-        values.extend(black_bishop_map);
-        values.extend(white_bishop_map);
-        values.extend(black_rook_map);
-        values.extend(white_rook_map);
-        values.extend(black_queen_map);
-        values.extend(white_queen_map);
-        values.extend(black_king_map);
-        values.extend(white_king_map);
-        values.extend(castling_rights_map);
-        values.extend(en_passant_squares_map);
-        values.extend(player_turn_map);
+        values.extend(black_pawn_map); // 64
+        values.extend(white_pawn_map); // 64
+        values.extend(black_knight_map); // 64
+        values.extend(white_knight_map); // 64
+        values.extend(black_bishop_map); // 64
+        values.extend(white_bishop_map); // 64
+        values.extend(black_rook_map); // 64
+        values.extend(white_rook_map); // 64
+        values.extend(black_queen_map); // 64
+        values.extend(white_queen_map); // 64
+        values.extend(black_king_map); // 64
+        values.extend(white_king_map); // 64
+        values.extend(castling_rights_map); // 4
+        values.extend(en_passant_squares_map); // 16
+        values.extend(player_turn_map); // 2
         values
     }
 }

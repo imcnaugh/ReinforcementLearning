@@ -24,7 +24,7 @@ impl NStepTD {
         }
     }
 
-    fn learn_from_episode<S: State>(&mut self, starting_state: S) {
+    pub fn learn_from_episode<S: State>(&mut self, starting_state: S) {
         let mut current_state = starting_state;
         let mut states_queue: VecDeque<S> = VecDeque::new();
         let mut rewards_queue: VecDeque<f64> = VecDeque::new();
@@ -95,13 +95,16 @@ impl NStepTD {
     /// for this type of task, that's covered in chapter 13. So time to get
     /// back to reading, but ill be back!c
     fn select_next_action<S: State>(&self, state: &S) -> String {
-        let actions = state.get_actions();
-
         if rand::rng().random::<f64>() < self.explore_rate {
+            let actions = state.get_actions();
             let random_index = rand::rng().random_range(0..actions.len());
             return actions[random_index].clone();
         }
+        self.select_best_action_for_state(state)
+    }
 
+    pub fn select_best_action_for_state<S: State>(&self, state: &S) -> String {
+        let actions = state.get_actions();
         let mut best_value = f64::NEG_INFINITY;
         let mut best_action = actions.first().unwrap().clone();
 

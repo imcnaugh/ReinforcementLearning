@@ -11,7 +11,13 @@ use ReinforcementLearning::attempts_at_framework::v1::agent::{
     get_best_action_heuristic_search, NStepSarsa,
 };
 use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPolicy, Policy};
+use ReinforcementLearning::attempts_at_framework::v2::agent::n_step_td::NStepTD;
+use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
+use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::Model;
+use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType, ModelBuilder};
+use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::{LINEAR, RELU};
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
+use ReinforcementLearning::chess_state_v2::ChessStateV2;
 
 fn main() {
     let options = eframe::NativeOptions {
@@ -27,6 +33,21 @@ fn main() {
         }),
     )
     .unwrap();
+}
+
+fn generate_model() -> Model {
+    let mut builder = ModelBuilder::new();
+
+    builder.set_loss_function(Box::new(MeanSquaredError));
+    builder.set_input_size(790);
+
+    builder.add_layer(LayerBuilder::new(LINEAR, 790));
+    builder.add_layer(LayerBuilder::new(RELU, 790));
+    builder.add_layer(LayerBuilder::new(LINEAR, 100));
+    builder.add_layer(LayerBuilder::new(LINEAR, 1));
+
+    let model = builder.build();
+    model.unwrap()
 }
 
 enum LearningMethod {
@@ -48,6 +69,7 @@ struct MyApp {
     heuristic_depth: usize,
     fen_string_input: String,
     learning_method: LearningMethod,
+    n_step_td_ann_agent: NStepTD,
 }
 
 const NEW_GAME_FEN_STRING: &'static str =
@@ -57,6 +79,9 @@ impl MyApp {
     pub fn new() -> Self {
         let mut game = ChessGame::new();
         let state = game.get_game_state();
+
+        let mut agent = NStepTD::new(10, generate_model(), 1.0 / 790.0);
+        agent.set_discount_rate(1.0);
 
         Self {
             chess_game: game,
@@ -71,6 +96,7 @@ impl MyApp {
             heuristic_depth: 1,
             fen_string_input: String::from(""),
             learning_method: LearningMethod::HeuristicSearch,
+            n_step_td_ann_agent: agent,
         }
     }
 
@@ -99,6 +125,18 @@ impl MyApp {
 
         self.policy_for_black = self.agent.get_policy().to_deterministic_policy();
         println!("Finished Learning");
+    }
+
+    fn do_n_step_td_learning(&mut self) {
+        println!("starting training the neural network");
+        let game = build_game_from_string(&self.fen_string_input).unwrap_or(ChessGame::new());
+        let starting_state = ChessStateV2::new(encode_game_as_string(&game));
+        for _ in 0..self.num_episodes_to_learn_for {
+            self.n_step_td_ann_agent
+                .learn_from_episode(starting_state.clone());
+        }
+        println!("Finished training the neural network");
+        self.n_step_td_ann_agent.get_model().print_weights();
     }
 
     fn square_selected(&mut self, row: usize, col: usize) {
@@ -171,6 +209,14 @@ impl MyApp {
         }
     }
 
+    pub fn get_best_action_neural_network(&mut self, game: &mut ChessGame) -> String {
+        let game_as_fen_string = encode_game_as_string(&game);
+        let state = ChessStateV2::new(game_as_fen_string);
+
+        self.n_step_td_ann_agent
+            .select_best_action_for_state(&state)
+    }
+
     fn select_and_make_move(&mut self, legal_moves: &Vec<ChessMoveType>) -> ChessMoveType {
         let mut game = self.chess_game.clone();
         let next_move = match self.learning_method {
@@ -178,7 +224,7 @@ impl MyApp {
             LearningMethod::HeuristicSearch => {
                 get_best_action_heuristic_search(&mut game, self.heuristic_depth)
             }
-            LearningMethod::NeuralNetwork => todo!(),
+            LearningMethod::NeuralNetwork => self.get_best_action_neural_network(&mut game),
         };
 
         let nm = legal_moves
@@ -365,6 +411,24 @@ impl MyApp {
         });
     }
 
+    fn ann_learn_display(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            if ui.button("Learn").clicked() {
+                self.do_n_step_td_learning();
+            };
+
+            ui.horizontal(|ui| {
+                ui.label("Number of Episodes:");
+                let mut num_episodes_string = self.num_episodes_to_learn_for.to_string();
+                if ui.text_edit_singleline(&mut num_episodes_string).changed() {
+                    if let Ok(num) = num_episodes_string.parse::<u32>() {
+                        self.num_episodes_to_learn_for = num as usize;
+                    }
+                }
+            });
+        });
+    }
+
     fn learn_button(&mut self, ui: &mut Ui) {
         ui.vertical(|ui| {
             ui.label(
@@ -470,7 +534,7 @@ impl eframe::App for MyApp {
                         LearningMethod::HeuristicSearch => {
                             self.depth_display(ui);
                         }
-                        LearningMethod::NeuralNetwork => {}
+                        LearningMethod::NeuralNetwork => self.ann_learn_display(ui),
                     };
                     ui.add_space(10.0);
                     self.previous_moves(ui);
