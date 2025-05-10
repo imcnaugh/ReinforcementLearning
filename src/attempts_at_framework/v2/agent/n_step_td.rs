@@ -105,13 +105,13 @@ impl NStepTD {
 
     pub fn select_best_action_for_state<S: State>(&self, state: &S) -> String {
         let actions = state.get_actions();
-        let mut best_value = f64::NEG_INFINITY;
+        let mut best_value = f64::MIN;
         let mut best_action = actions.first().unwrap().clone();
 
         for action in actions {
             let state_clone = state.clone();
-            let (reward, _) = state.take_action(&action);
-            let value = self.model.predict(state_clone.get_values())[0];
+            let (reward, next_state) = state_clone.take_action(&action);
+            let value = self.model.predict(next_state.get_values())[0];
             if (value + reward) > best_value {
                 best_action = action.clone();
                 best_value = value;

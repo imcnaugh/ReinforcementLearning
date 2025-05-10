@@ -41,9 +41,8 @@ fn generate_model() -> Model {
     builder.set_loss_function(Box::new(MeanSquaredError));
     builder.set_input_size(790);
 
-    builder.add_layer(LayerBuilder::new(LINEAR, 100));
+    builder.add_layer(LayerBuilder::new(LINEAR, 64));
     builder.add_layer(LayerBuilder::new(RELU, 10));
-    builder.add_layer(LayerBuilder::new(LINEAR, 10));
     builder.add_layer(LayerBuilder::new(LINEAR, 1));
 
     let model = builder.build();
@@ -80,7 +79,7 @@ impl MyApp {
         let mut game = ChessGame::new();
         let state = game.get_game_state();
 
-        let mut agent = NStepTD::new(100, generate_model(), 0.0000000000000001);
+        let mut agent = NStepTD::new(100, generate_model(), 0.0000001);
         agent.set_discount_rate(0.99);
         agent.set_explore_rate(0.5);
 
