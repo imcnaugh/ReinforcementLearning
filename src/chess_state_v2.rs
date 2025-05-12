@@ -1,19 +1,17 @@
 use crate::attempts_at_framework::v2::state::State;
-use rand::prelude::IndexedRandom;
 use simple_chess::chess_game_state_analyzer::GameState;
 use simple_chess::game_board::{get_column_and_row_from_square_name, Board};
 use simple_chess::piece::{ChessPiece, PieceType};
-use simple_chess::Color;
-use crate::attempts_at_framework::v2::artificial_neural_network::model::Model;
+use simple_chess::{ChessGame, ChessMoveType, Color};
 
 #[derive(Clone)]
-pub struct ChessStateV2<'a> {
+pub struct ChessStateV2 {
     id: String,
     fen_string: String,
     moves: Vec<String>,
     is_terminal: bool,
     board: Board<ChessPiece>,
-    model: &'a Model
+    select_other_player_moves_fn: fn(&mut ChessGame) -> ChessMoveType,
 }
 
 pub fn get_state_id_from_fen_string(game_as_fen_string: &String) -> String {
@@ -28,8 +26,11 @@ pub fn get_state_id_from_fen_string(game_as_fen_string: &String) -> String {
     format!("{}_{}_{}", parts[0], parts[2], parts[3])
 }
 
-impl<'a> ChessStateV2<'a> {
-    pub fn new(game_as_fen_string: String, model: &'a Model) -> Self {
+impl ChessStateV2 {
+    pub fn new(
+        game_as_fen_string: String,
+        select_other_player_moves_fn: fn(&mut ChessGame) -> ChessMoveType,
+    ) -> Self {
         let mut game = simple_chess::codec::forsyth_edwards_notation::build_game_from_string(
             &game_as_fen_string,
         )
@@ -58,12 +59,12 @@ impl<'a> ChessStateV2<'a> {
             moves,
             is_terminal,
             board: game.get_board().clone(),
-            model
+            select_other_player_moves_fn,
         }
     }
 }
 
-impl State for ChessStateV2<'_> {
+impl State for ChessStateV2 {
     fn get_id(&self) -> String {
         self.id.clone()
     }
@@ -95,50 +96,68 @@ impl State for ChessStateV2<'_> {
         game.make_move(move_to_take.clone());
         match game.get_game_state() {
             GameState::InProgress { .. } => {
-                let next_possible_moves = match game.get_game_state() {
-                    GameState::InProgress { legal_moves, .. } => legal_moves,
-                    GameState::Check { legal_moves, .. } => legal_moves,
-                    GameState::Checkmate { .. } => Vec::new(),
-                    GameState::Stalemate => Vec::new(),
-                };
-                let next_move = next_possible_moves.choose(&mut rng).unwrap();
-                game.make_move(next_move.clone());
+                let next_move = (self.select_other_player_moves_fn)(&mut game);
+                game.make_move(next_move);
                 let new_fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 match game.get_game_state() {
-                    GameState::InProgress { .. } => (0.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Check { .. } => (0.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Checkmate { .. } => (-1.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Stalemate => (0.0, ChessStateV2::new(new_fen_string, self.model)),
+                    GameState::InProgress { .. } => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Check { .. } => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Checkmate { .. } => (
+                        -1.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Stalemate => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
                 }
             }
             GameState::Check { .. } => {
-                let next_possible_moves = match game.get_game_state() {
-                    GameState::InProgress { legal_moves, .. } => legal_moves,
-                    GameState::Check { legal_moves, .. } => legal_moves,
-                    GameState::Checkmate { .. } => Vec::new(),
-                    GameState::Stalemate => Vec::new(),
-                };
-                let next_move = next_possible_moves.choose(&mut rng).unwrap();
-                game.make_move(next_move.clone());
+                let next_move = (self.select_other_player_moves_fn)(&mut game);
+                game.make_move(next_move);
                 let new_fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
                 match game.get_game_state() {
-                    GameState::InProgress { .. } => (0.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Check { .. } => (0.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Checkmate { .. } => (-1.0, ChessStateV2::new(new_fen_string, self.model)),
-                    GameState::Stalemate => (0.0, ChessStateV2::new(new_fen_string, self.model)),
+                    GameState::InProgress { .. } => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Check { .. } => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Checkmate { .. } => (
+                        -1.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
+                    GameState::Stalemate => (
+                        0.0,
+                        ChessStateV2::new(new_fen_string, self.select_other_player_moves_fn),
+                    ),
                 }
             }
             GameState::Checkmate { .. } => {
                 let fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
-                (1.0, ChessStateV2::new(fen_string, self.model))
+                (
+                    1.0,
+                    ChessStateV2::new(fen_string, self.select_other_player_moves_fn),
+                )
             }
             GameState::Stalemate => {
                 let fen_string =
                     simple_chess::codec::forsyth_edwards_notation::encode_game_as_string(&game);
-                (0.0, ChessStateV2::new(fen_string, self.model))
+                (
+                    0.0,
+                    ChessStateV2::new(fen_string, self.select_other_player_moves_fn),
+                )
             }
         }
     }

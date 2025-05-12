@@ -134,15 +134,26 @@ impl MyApp {
             GameState::InProgress { legal_moves, .. } => legal_moves,
             _ => panic!("Game should be in progress at this point"),
         };
-        
-        let model = self.n_step_td_ann_agent.get_model();
+
+        let pick_move_fn = |game: &mut ChessGame| {
+            let legal_moves = match game.get_game_state() {
+                GameState::InProgress { legal_moves, .. } => legal_moves,
+                GameState::Check { legal_moves, .. } => legal_moves,
+                GameState::Checkmate { .. } => Vec::new(),
+                GameState::Stalemate => Vec::new(),
+            };
+
+            // pick a random move
+            legal_moves.choose(&mut rand::rng()).unwrap().clone()
+        };
+
         let first_states: Vec<ChessStateV2> = possible_first_moves
             .iter()
             .map(|m| {
                 let mut g = game.clone();
                 g.make_move(m.clone());
                 let fen_string = encode_game_as_string(&g);
-                ChessStateV2::new(fen_string, model)
+                ChessStateV2::new(fen_string, pick_move_fn)
             })
             .collect();
 
@@ -225,8 +236,20 @@ impl MyApp {
     }
 
     pub fn get_best_action_neural_network(&mut self, game: &mut ChessGame) -> String {
+        let pick_move_fn = |game: &mut ChessGame| {
+            let legal_moves = match game.get_game_state() {
+                GameState::InProgress { legal_moves, .. } => legal_moves,
+                GameState::Check { legal_moves, .. } => legal_moves,
+                GameState::Checkmate { .. } => Vec::new(),
+                GameState::Stalemate => Vec::new(),
+            };
+
+            // pick a random move
+            legal_moves.choose(&mut rand::rng()).unwrap().clone()
+        };
+
         let game_as_fen_string = encode_game_as_string(&game);
-        let state = ChessStateV2::new(game_as_fen_string, self.n_step_td_ann_agent.get_model());
+        let state = ChessStateV2::new(game_as_fen_string, pick_move_fn);
 
         self.n_step_td_ann_agent
             .select_best_action_for_state(&state)
