@@ -16,6 +16,7 @@ use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network:
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::Model;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType, ModelBuilder};
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::{LINEAR, RELU};
+use ReinforcementLearning::attempts_at_framework::v2::state::State;
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 use ReinforcementLearning::chess_state_v2::ChessStateV2;
 
@@ -145,6 +146,30 @@ impl MyApp {
 
             // pick a random move
             legal_moves.choose(&mut rand::rng()).unwrap().clone()
+
+            // let mut best_move = legal_moves.first().unwrap().clone();
+            // let mut best_value = f64::MIN;
+            // for m in &legal_moves {
+            //     let mut clone_game = game.clone();
+            //     clone_game.make_move(m.clone());
+            //     let new_state = ChessStateV2::new(encode_game_as_string(&clone_game), |a| {
+            //         let legal_moves = match a.get_game_state() {
+            //             GameState::InProgress { legal_moves, .. } => legal_moves,
+            //             GameState::Check { legal_moves, .. } => legal_moves,
+            //             GameState::Checkmate { .. } => vec![],
+            //             GameState::Stalemate => vec![],
+            //         };
+            //         legal_moves.choose(&mut rand::rng()).unwrap().clone()
+            //     });
+            //
+            //     let value = self.n_step_td_ann_agent.get_model().predict(new_state.get_values())[0];
+            //     if value > best_value {
+            //         best_move = m.clone();
+            //         best_value = value;
+            //     }
+            // }
+            //
+            // best_move
         };
 
         let first_states: Vec<ChessStateV2> = possible_first_moves

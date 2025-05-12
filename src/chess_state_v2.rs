@@ -78,7 +78,6 @@ impl State for ChessStateV2 {
     }
 
     fn take_action(&self, action: &str) -> (f64, Self) {
-        let mut rng = rand::rng();
         let mut game =
             simple_chess::codec::forsyth_edwards_notation::build_game_from_string(&self.fen_string)
                 .unwrap();
