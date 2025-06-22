@@ -117,6 +117,8 @@ mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::Policy;
     use crate::service::{LineChartBuilder, LineChartData};
+    use plotters::prelude::full_palette::{ORANGE, PURPLE};
+    use plotters::prelude::{CYAN, GREEN, MAGENTA, RED, YELLOW};
     use plotters::style::{ShapeStyle, BLUE};
     use rand::prelude::IteratorRandom;
     use std::path::PathBuf;
@@ -145,9 +147,7 @@ mod tests {
         (1..=7).for_each(|id| {
             let state = TestState::new(id);
             let actions = state.get_actions();
-            let mut expected_actions = vec!["1", "2", "3", "4", "5", "6", "7"];
-            let index_to_remove = id - 1;
-            expected_actions.remove(index_to_remove);
+            let expected_actions = vec!["dashed", "solid"];
             assert_eq!(actions, expected_actions);
         });
     }
@@ -156,9 +156,9 @@ mod tests {
     fn test_take_action() {
         (2..=7).for_each(|id| {
             let state = TestState::new(id);
-            let (reward, next_state) = state.take_action("1");
+            let (reward, next_state) = state.take_action("solid");
             assert_eq!(reward, 0.0);
-            assert_eq!(next_state.id, 1);
+            assert_eq!(next_state.id, 7);
         });
     }
 
@@ -167,7 +167,7 @@ mod tests {
         let policy = create_target_policy();
         (1..=7).for_each(|id| {
             let id = id.to_string();
-            assert_eq!("7", policy.select_action_for_state(&id).unwrap());
+            assert_eq!("solid", policy.select_action_for_state(&id).unwrap());
         })
     }
 
@@ -175,7 +175,7 @@ mod tests {
     fn test_create_behavior_policy() {
         let policy = create_behavior_policy();
         let choice = policy.select_action_for_state("1").unwrap();
-        let possible = vec!["1", "2", "3", "4", "5", "6", "7"];
+        let possible = vec!["solid", "dashed"];
         assert!(possible.contains(&choice.as_str()))
     }
 
@@ -290,6 +290,16 @@ mod tests {
             })
         });
 
+        let colors = vec![
+            ShapeStyle::from(&RED),
+            ShapeStyle::from(&GREEN),
+            ShapeStyle::from(&BLUE),
+            ShapeStyle::from(&YELLOW),
+            ShapeStyle::from(&CYAN),
+            ShapeStyle::from(&MAGENTA),
+        ];
+        let mut colors = colors.iter().cycle();
+
         let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from(
@@ -304,7 +314,11 @@ mod tests {
                 .enumerate()
                 .map(|(i, w)| (i as f32, w.clone() as f32))
                 .collect();
-            let data = LineChartData::new(format!("weight {i}"), data, ShapeStyle::from(&BLUE));
+            let data = LineChartData::new(
+                format!("weight {}", i + 1),
+                data,
+                colors.next().unwrap().clone(),
+            );
             chart_builder.add_data(data);
         });
 
