@@ -9,11 +9,23 @@ pub struct LineChartData {
 }
 
 impl LineChartData {
-    pub fn new(label: String, points: Vec<(f32, f32)>, style: ShapeStyle) -> LineChartData {
+    pub fn new_with_style(
+        label: String,
+        points: Vec<(f32, f32)>,
+        style: ShapeStyle,
+    ) -> LineChartData {
         LineChartData {
             label: Some(label),
             points,
             style: Some(style),
+        }
+    }
+
+    pub fn new(label: String, points: Vec<(f32, f32)>) -> LineChartData {
+        LineChartData {
+            label: Some(label),
+            points,
+            style: None,
         }
     }
 
@@ -129,7 +141,14 @@ impl LineChartBuilder {
 
         configure_mesh.draw()?;
 
-        let default_styles: Vec<ShapeStyle> = vec![BLUE.into(), RED.into(), GREEN.into()];
+        let default_styles: Vec<ShapeStyle> = vec![
+            ShapeStyle::from(&RED),
+            ShapeStyle::from(&BLUE),
+            ShapeStyle::from(&MAGENTA),
+            ShapeStyle::from(&CYAN),
+            ShapeStyle::from(&GREEN),
+            ShapeStyle::from(&YELLOW),
+        ];
         let mut next_style = default_styles.iter().cycle();
         let mut next_id = 1;
 
@@ -362,7 +381,11 @@ mod tests {
         // );
         let data = LineChartData::just_plot_it(points);
 
-        let data_2 = LineChartData::new(String::from("Data 2"), points_2, ShapeStyle::from(&BLACK));
+        let data_2 = LineChartData::new_with_style(
+            String::from("Data 2"),
+            points_2,
+            ShapeStyle::from(&BLACK),
+        );
 
         let data_3 = LineChartData::just_plot_it(points_3);
 

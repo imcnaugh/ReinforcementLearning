@@ -164,12 +164,12 @@ mod tests {
         ));
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "Expected".to_string(),
             vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),

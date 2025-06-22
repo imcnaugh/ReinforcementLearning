@@ -112,22 +112,22 @@ mod tests {
             reverse_car.tick(&CarAction::Reverse);
         }
 
-        let go_car_data = LineChartData::new(
+        let go_car_data = LineChartData::new_with_style(
             "always accelerate".to_string(),
             go_car_x_over_time,
             ShapeStyle::from(&BLUE),
         );
-        let neutral_car_data = LineChartData::new(
+        let neutral_car_data = LineChartData::new_with_style(
             "always neutral".to_string(),
             neutral_car_x_over_time,
             ShapeStyle::from(&PURPLE),
         );
-        let reverse_car_data = LineChartData::new(
+        let reverse_car_data = LineChartData::new_with_style(
             "always reverse".to_string(),
             reverse_car_x_over_time,
             ShapeStyle::from(&RED),
         );
-        let track_width = LineChartData::new(
+        let track_width = LineChartData::new_with_style(
             "track width".to_string(),
             vec![
                 (0.0, POSITION_LOWER_BOUND as f32),

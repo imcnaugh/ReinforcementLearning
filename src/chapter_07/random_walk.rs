@@ -266,8 +266,11 @@ mod tests {
             println!("Mean squared error: {}", average_mean_squared_error.sqrt());
         });
 
-        let line_chart_points =
-            LineChartData::new(format!("{} step mse", n), points, ShapeStyle::from(&BLACK));
+        let line_chart_points = LineChartData::new_with_style(
+            format!("{} step mse", n),
+            points,
+            ShapeStyle::from(&BLACK),
+        );
         let mut builder = LineChartBuilder::new();
         builder
             .set_path(std::path::PathBuf::from(

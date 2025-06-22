@@ -559,12 +559,12 @@ mod tests {
         println!("Last value of avg_org: {:?}", avg_org.last().unwrap().1);
         println!("Last value of avg_wei: {:?}", avg_wei.last().unwrap().1);
 
-        let ordinary_chart_data = LineChartData::new(
+        let ordinary_chart_data = LineChartData::new_with_style(
             "Ordinary mean squared error".to_string(),
             avg_org,
             ShapeStyle::from(&RED),
         );
-        let weighted_chart_data = LineChartData::new(
+        let weighted_chart_data = LineChartData::new_with_style(
             "Weighted mean squared error".to_string(),
             avg_wei,
             ShapeStyle::from(&BLUE),

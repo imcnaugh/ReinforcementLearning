@@ -54,13 +54,13 @@ mod tests {
             })
             .collect();
 
-        let data_all_episodes = LineChartData::new(
+        let data_all_episodes = LineChartData::new_with_style(
             format!("after {} episodes", number_of_episodes),
             data_after_100_episodes,
             ShapeStyle::from(&BLUE),
         );
 
-        let data_expected = LineChartData::new(
+        let data_expected = LineChartData::new_with_style(
             String::from("expected value"),
             actual_value,
             ShapeStyle::from(&BLACK),

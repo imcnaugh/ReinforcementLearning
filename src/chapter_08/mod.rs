@@ -294,13 +294,13 @@ mod tests {
                 })
                 .collect();
 
-            let expected_data = LineChartData::new(
+            let expected_data = LineChartData::new_with_style(
                 format!("Expected updates (b={})", b),
                 expected_updates,
                 BLUE.into(),
             );
 
-            let sample_data = LineChartData::new(
+            let sample_data = LineChartData::new_with_style(
                 format!("Sample updates (b={})", b),
                 sample_updates,
                 RED.into(),

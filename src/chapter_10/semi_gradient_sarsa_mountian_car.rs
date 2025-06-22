@@ -194,7 +194,11 @@ mod tests {
                     CarAction::Neutral => ShapeStyle::from(&BLUE_500),
                     CarAction::Reverse => ShapeStyle::from(&RED_500),
                 };
-                chart_builder.add_data(LineChartData::new("".to_string(), relevant_data, color));
+                chart_builder.add_data(LineChartData::new_with_style(
+                    "".to_string(),
+                    relevant_data,
+                    color,
+                ));
                 relevant_data = vec![];
             }
             relevant_data.push((index as f32, *x_pos as f32));
@@ -206,7 +210,11 @@ mod tests {
             CarAction::Neutral => ShapeStyle::from(&BLUE_500),
             CarAction::Reverse => ShapeStyle::from(&RED_500),
         };
-        chart_builder.add_data(LineChartData::new("".to_string(), relevant_data, color));
+        chart_builder.add_data(LineChartData::new_with_style(
+            "".to_string(),
+            relevant_data,
+            color,
+        ));
 
         chart_builder.set_path(PathBuf::from("output/chapter10/trained_mountain_car.png"));
 

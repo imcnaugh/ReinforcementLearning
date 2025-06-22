@@ -301,7 +301,8 @@ mod tests {
             data.push((learning_rate as f32, count as f32));
         }
 
-        let data_as_line = LineChartData::new("idk".to_string(), data, ShapeStyle::from(&BLUE));
+        let data_as_line =
+            LineChartData::new_with_style("idk".to_string(), data, ShapeStyle::from(&BLUE));
         chart_builder.add_data(data_as_line);
 
         chart_builder.create_chart().unwrap()
@@ -340,12 +341,12 @@ mod tests {
         line_chart_builder.set_title("Thousand state random walk Monte Carlo".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "Expected".to_string(),
             vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),
@@ -392,12 +393,12 @@ mod tests {
         line_chart_builder.set_title("Thousand state random walk TD0".to_string());
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "Expected".to_string(),
             vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),
@@ -448,12 +449,12 @@ mod tests {
         line_chart_builder.set_title(format!("Thousand state random walk {} step", n));
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "Expected".to_string(),
             vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),
@@ -515,12 +516,12 @@ mod tests {
         ));
         line_chart_builder.set_x_label("State".to_string());
         line_chart_builder.set_y_label("Value".to_string());
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "Expected".to_string(),
             vec![(0.0, -1.0), (number_of_states as f32, 1.0)],
             ShapeStyle::from(&RED),
         ));
-        line_chart_builder.add_data(LineChartData::new(
+        line_chart_builder.add_data(LineChartData::new_with_style(
             "State values".to_string(),
             data_points,
             ShapeStyle::from(&BLUE),

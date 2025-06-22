@@ -290,16 +290,6 @@ mod tests {
             })
         });
 
-        let colors = vec![
-            ShapeStyle::from(&RED),
-            ShapeStyle::from(&GREEN),
-            ShapeStyle::from(&BLUE),
-            ShapeStyle::from(&YELLOW),
-            ShapeStyle::from(&CYAN),
-            ShapeStyle::from(&MAGENTA),
-        ];
-        let mut colors = colors.iter().cycle();
-
         let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from(
@@ -314,11 +304,7 @@ mod tests {
                 .enumerate()
                 .map(|(i, w)| (i as f32, w.clone() as f32))
                 .collect();
-            let data = LineChartData::new(
-                format!("weight {}", i + 1),
-                data,
-                colors.next().unwrap().clone(),
-            );
+            let data = LineChartData::new(format!("weight {}", i + 1), data);
             chart_builder.add_data(data);
         });
 
