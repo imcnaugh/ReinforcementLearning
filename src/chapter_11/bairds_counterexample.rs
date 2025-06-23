@@ -117,9 +117,6 @@ mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::Policy;
     use crate::service::{LineChartBuilder, LineChartData};
-    use plotters::prelude::full_palette::{ORANGE, PURPLE};
-    use plotters::prelude::{CYAN, GREEN, MAGENTA, RED, YELLOW};
-    use plotters::style::{ShapeStyle, BLUE};
     use rand::prelude::IteratorRandom;
     use std::path::PathBuf;
 
@@ -263,7 +260,7 @@ mod tests {
         let mut state = TestState::new(starting_state);
 
         let behavior_policy = create_behavior_policy();
-        let target_policy = create_target_policy();
+        let _target_policy = create_target_policy();
 
         let mut weights_over_time = vec![vec![]; 8];
 
@@ -307,6 +304,75 @@ mod tests {
             let data = LineChartData::new(format!("weight {}", i + 1), data);
             chart_builder.add_data(data);
         });
+
+        chart_builder.create_chart().unwrap()
+    }
+
+    #[test]
+    fn test_on_policy_stability() {
+        let mut weights = vec![1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 10.0, 1.0];
+        let size_step = 0.01;
+        let discount_factor = 0.99;
+
+        let total_steps = 1000;
+
+        let starting_state = (0..=7).choose(&mut rand::rng()).unwrap();
+        let mut state = TestState::new(starting_state);
+
+        let behavior_policy = create_behavior_policy();
+
+        let mut estimated_state_values = vec![vec![]; 7];
+
+        (0..total_steps).for_each(|_| {
+            let next_action = behavior_policy
+                .select_action_for_state(&state.get_id())
+                .unwrap();
+            let (reward, next_state) = state.take_action(&next_action);
+
+            let error = get_td_error(&weights, reward, discount_factor, &state, &next_state);
+
+            weights = update_weights(&weights, size_step, 1.0, error, &state.get_values());
+            state = next_state;
+
+            (0..7).for_each(|i| {
+                let s = TestState::new(i);
+                let value = s.get_values();
+                let estimated_value: f64 = weights.iter().zip(value).map(|(w, v)| w * v).sum();
+                estimated_state_values[i].push(estimated_value);
+            })
+        });
+
+        (0..7).for_each(|i| {
+            let s = TestState::new(i);
+            let value = s.get_values();
+            let estimated_value: f64 = weights.iter().zip(value).map(|(w, v)| w * v).sum();
+            println!(
+                "final estimated state value for state: {}, {}",
+                i + 1,
+                estimated_value
+            )
+        });
+
+        let mut chart_builder = LineChartBuilder::new();
+        chart_builder
+            .set_path(PathBuf::from(
+                "output/chapter11/baird's counter example on policy weights.png",
+            ))
+            .set_x_label("steps".to_string())
+            .set_y_label("estimated state value".to_string());
+
+        estimated_state_values
+            .iter()
+            .enumerate()
+            .for_each(|(i, w)| {
+                let data: Vec<(f32, f32)> = w
+                    .iter()
+                    .enumerate()
+                    .map(|(i, w)| (i as f32, w.clone() as f32))
+                    .collect();
+                let data = LineChartData::new(format!("state {}", i + 1), data);
+                chart_builder.add_data(data);
+            });
 
         chart_builder.create_chart().unwrap()
     }
