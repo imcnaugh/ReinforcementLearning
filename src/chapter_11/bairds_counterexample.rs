@@ -314,13 +314,14 @@ mod tests {
         let size_step = 0.01;
         let discount_factor = 0.99;
 
-        let total_steps = 1000;
+        let total_steps = 40000;
 
         let starting_state = (0..=7).choose(&mut rand::rng()).unwrap();
         let mut state = TestState::new(starting_state);
 
         let behavior_policy = create_behavior_policy();
 
+        let mut weights_over_time = vec![vec![]; 8];
         let mut estimated_state_values = vec![vec![]; 7];
 
         (0..total_steps).for_each(|_| {
@@ -334,12 +335,16 @@ mod tests {
             weights = update_weights(&weights, size_step, 1.0, error, &state.get_values());
             state = next_state;
 
+            weights.iter().enumerate().for_each(|(i, w)| {
+                weights_over_time[i].push(*w);
+            });
+
             (0..7).for_each(|i| {
                 let s = TestState::new(i);
                 let value = s.get_values();
                 let estimated_value: f64 = weights.iter().zip(value).map(|(w, v)| w * v).sum();
                 estimated_state_values[i].push(estimated_value);
-            })
+            });
         });
 
         (0..7).for_each(|i| {
@@ -356,7 +361,7 @@ mod tests {
         let mut chart_builder = LineChartBuilder::new();
         chart_builder
             .set_path(PathBuf::from(
-                "output/chapter11/baird's counter example on policy weights.png",
+                "output/chapter11/baird's counter example on policy state values over time.png",
             ))
             .set_x_label("steps".to_string())
             .set_y_label("estimated state value".to_string());
@@ -374,6 +379,26 @@ mod tests {
                 chart_builder.add_data(data);
             });
 
-        chart_builder.create_chart().unwrap()
+        chart_builder.create_chart().unwrap();
+
+        let mut chart_builder = LineChartBuilder::new();
+        chart_builder
+            .set_path(PathBuf::from(
+                "output/chapter11/baird's counter example on policy weights.png",
+            ))
+            .set_x_label("steps".to_string())
+            .set_y_label("weight value".to_string());
+
+        weights_over_time.iter().enumerate().for_each(|(i, w)| {
+            let data: Vec<(f32, f32)> = w
+                .iter()
+                .enumerate()
+                .map(|(i, w)| (i as f32, w.clone() as f32))
+                .collect();
+            let data = LineChartData::new(format!("weight {}", i + 1), data);
+            chart_builder.add_data(data);
+        });
+
+        chart_builder.create_chart().unwrap();
     }
 }
