@@ -1,3 +1,6 @@
+use crate::attempts_at_framework::v2::state::State;
+use std::fmt::Display;
+
 pub const VELOCITY_LOWER_BOUND: f64 = -0.07;
 pub const VELOCITY_UPPER_BOUND: f64 = 0.07;
 pub const POSITION_LOWER_BOUND: f64 = -1.2;
@@ -5,11 +8,9 @@ pub const POSITION_UPPER_BOUND: f64 = 0.5;
 
 pub fn feature_vector(x_position: f64, velocity: f64, action: CarAction) -> Vec<f64> {
     const TILES: usize = 8;
-    const VELOCITY_TILE_SIZE: f64 = (VELOCITY_UPPER_BOUND - VELOCITY_LOWER_BOUND) / TILES as f64;
-    const POSITION_TILE_SIZE: f64 = (POSITION_UPPER_BOUND - POSITION_LOWER_BOUND) / TILES as f64;
 
-    let velocity_tile = ((velocity - VELOCITY_LOWER_BOUND) / VELOCITY_TILE_SIZE) as usize;
-    let position_tile = TILES + ((x_position - POSITION_LOWER_BOUND) / POSITION_TILE_SIZE) as usize;
+    let velocity_tile = get_velocity_tile(velocity, TILES);
+    let position_tile = TILES + get_position_tile(x_position, TILES);
 
     let action_buffer = match action {
         CarAction::Forward => 0,
@@ -21,6 +22,16 @@ pub fn feature_vector(x_position: f64, velocity: f64, action: CarAction) -> Vec<
     response[action_buffer + velocity_tile] = 1.0;
     response[action_buffer + position_tile] = 1.0;
     response
+}
+
+fn get_position_tile(x_position: f64, tiles: usize) -> usize {
+    let position_tile_size: f64 = (POSITION_UPPER_BOUND - POSITION_LOWER_BOUND) / tiles as f64;
+    ((x_position - POSITION_LOWER_BOUND) / position_tile_size) as usize
+}
+
+fn get_velocity_tile(velocity: f64, tiles: usize) -> usize {
+    let velocity_tile_size: f64 = (VELOCITY_UPPER_BOUND - VELOCITY_LOWER_BOUND) / tiles as f64;
+    ((velocity - VELOCITY_LOWER_BOUND) / velocity_tile_size) as usize
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -42,6 +53,17 @@ impl CarAction {
     pub const COUNT: usize = 3;
 }
 
+impl Display for CarAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CarAction::Forward => write!(f, "forward"),
+            CarAction::Neutral => write!(f, "neutral"),
+            CarAction::Reverse => write!(f, "reverse"),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct MountainCar {
     x_position: f64,
     velocity: f64,
@@ -63,7 +85,7 @@ impl MountainCar {
         let new_x_position =
             (self.x_position + new_velocity).clamp(POSITION_LOWER_BOUND, POSITION_UPPER_BOUND);
 
-        self.velocity = new_velocity * 0.99;
+        self.velocity = new_velocity;
         self.x_position = new_x_position;
     }
 
@@ -73,6 +95,44 @@ impl MountainCar {
 
     pub fn get_velocity(&self) -> f64 {
         self.velocity
+    }
+}
+
+impl State for MountainCar {
+    fn get_id(&self) -> String {
+        let x_position_tile = get_position_tile(self.get_x_position(), 8);
+        let velocity_tile = get_velocity_tile(self.get_velocity(), 8);
+        format!("{}_{}", x_position_tile, velocity_tile)
+    }
+
+    fn get_actions(&self) -> Vec<String> {
+        vec![CarAction::Forward, CarAction::Neutral, CarAction::Reverse]
+            .iter()
+            .map(|action| action.to_string())
+            .collect()
+    }
+
+    fn is_terminal(&self) -> bool {
+        self.get_x_position() >= POSITION_UPPER_BOUND
+    }
+
+    fn take_action(&self, action: &str) -> (f64, Self) {
+        let parsed_action = match action {
+            "forward" => CarAction::Forward,
+            "neutral" => CarAction::Neutral,
+            "reverse" => CarAction::Reverse,
+            _ => panic!("invalid action"),
+        };
+        let mut new_state = self.clone();
+        new_state.tick(&parsed_action);
+
+        let terminal = new_state.is_terminal();
+        let reward = if terminal { 0.0 } else { -1.0 };
+        (reward, new_state)
+    }
+
+    fn get_values(&self) -> Vec<f64> {
+        todo!()
     }
 }
 
