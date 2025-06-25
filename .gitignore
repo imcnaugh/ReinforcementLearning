@@ -25,3 +25,4 @@ Cargo.lock
 /target
 
 output/
+/tests/job_ad_data/
