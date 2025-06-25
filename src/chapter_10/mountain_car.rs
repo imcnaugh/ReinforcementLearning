@@ -5,10 +5,9 @@ pub const VELOCITY_LOWER_BOUND: f64 = -0.07;
 pub const VELOCITY_UPPER_BOUND: f64 = 0.07;
 pub const POSITION_LOWER_BOUND: f64 = -1.2;
 pub const POSITION_UPPER_BOUND: f64 = 0.5;
+pub const TILES: usize = 8;
 
 pub fn feature_vector(x_position: f64, velocity: f64, action: CarAction) -> Vec<f64> {
-    const TILES: usize = 8;
-
     let velocity_tile = get_velocity_tile(velocity, TILES);
     let position_tile = TILES + get_position_tile(x_position, TILES);
 
@@ -132,7 +131,14 @@ impl State for MountainCar {
     }
 
     fn get_values(&self) -> Vec<f64> {
-        todo!()
+        let mut velocity_vec = vec![0.0; TILES];
+        let mut position_vec = vec![0.0; TILES];
+        let velocity_index = get_velocity_tile(self.get_velocity(), TILES);
+        let position_index = get_position_tile(self.get_x_position(), TILES);
+        velocity_vec[velocity_index] = 1.0;
+        position_vec[position_index] = 1.0;
+        velocity_vec.append(&mut position_vec);
+        velocity_vec
     }
 }
 
@@ -140,9 +146,14 @@ impl State for MountainCar {
 mod tests {
     use super::*;
     use crate::service::{LineChartBuilder, LineChartData};
-    use plotters::prelude::full_palette::PURPLE;
+    use plotters::prelude::full_palette::{BLUE_500, GREEN_900, PURPLE, RED_500};
     use plotters::prelude::{ShapeStyle, BLACK, BLUE, RED};
     use std::path::PathBuf;
+    use rand::prelude::IndexedRandom;
+    use crate::attempts_at_framework::v2::agent::n_step_sarsa::NStepSarsa;
+    use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
+    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, ModelBuilder};
+    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::LINEAR;
 
     #[test]
     fn test_mountain_car() {
@@ -206,6 +217,95 @@ mod tests {
             .add_data(neutral_car_data)
             .add_data(reverse_car_data)
             .add_data(track_width);
+
+        chart_builder.create_chart().unwrap();
+    }
+
+    #[test]
+    fn train_mountain_car_with_ann() {
+        let learning_rate = 0.5 / 8.0;
+        let discount_factor = 1.0;
+        let exploration_rate = 0.01;
+        let episodes = 1000;
+
+        let mut model_builder = ModelBuilder::new();
+        model_builder.set_loss_function(Box::new(MeanSquaredError));
+        model_builder.set_input_size(TILES * 2 * CarAction::COUNT);
+        model_builder.add_layer(LayerBuilder::new(LINEAR, 1));
+        let model = model_builder.build().unwrap();
+
+        let mut agent = NStepSarsa::new(2, discount_factor, learning_rate, exploration_rate, model);
+
+        let starting_x_positions: Vec<f64> = (0..100)
+            .map(|i| {
+                let increment = 0.2 / 100.0;
+                -0.6 + increment * i as f64
+            })
+            .collect();
+
+        (0..episodes).for_each(|episode| {
+            let starting_x_position = starting_x_positions.choose(&mut rand::rng()).unwrap();
+            let starting_state = MountainCar::new(*starting_x_position, 0.0);
+            agent.learn_from_episode(starting_state);
+        });
+
+        agent.print_weights();
+
+        let mut test_car = MountainCar::new(-0.6, 0.0);
+        let mut x_pos_and_action: Vec<(f64, CarAction)> = vec![];
+
+        for i in 0..500 {
+            if test_car.get_x_position() == POSITION_UPPER_BOUND {
+                break;
+            }
+            let action = agent.get_best_action_for_state(&test_car);
+            let action = match action.as_str() {
+                "forward" => CarAction::Forward,
+                "neutral" => CarAction::Neutral,
+                "reverse" => CarAction::Reverse,
+                _ => panic!("invalid action"),
+            };
+            x_pos_and_action.push((test_car.get_x_position(), action));
+            test_car.tick(&action);
+        }
+
+        let mut chart_builder = LineChartBuilder::new();
+
+        let mut previous_action = x_pos_and_action[0].1;
+        let mut relevant_data: Vec<(f32, f32)> = vec![];
+
+        for (index, (x_pos, action)) in x_pos_and_action.iter().enumerate() {
+            if *action != previous_action {
+                let color = match previous_action {
+                    CarAction::Forward => ShapeStyle::from(&GREEN_900),
+                    CarAction::Neutral => ShapeStyle::from(&BLUE_500),
+                    CarAction::Reverse => ShapeStyle::from(&RED_500),
+                };
+                chart_builder.add_data(LineChartData::new_with_style(
+                    "".to_string(),
+                    relevant_data,
+                    color,
+                ));
+                relevant_data = vec![];
+            }
+            relevant_data.push((index as f32, *x_pos as f32));
+            previous_action = *action;
+        }
+
+        let color = match previous_action {
+            CarAction::Forward => ShapeStyle::from(&GREEN_900),
+            CarAction::Neutral => ShapeStyle::from(&BLUE_500),
+            CarAction::Reverse => ShapeStyle::from(&RED_500),
+        };
+        chart_builder.add_data(LineChartData::new_with_style(
+            "".to_string(),
+            relevant_data,
+            color,
+        ));
+
+        chart_builder.set_path(PathBuf::from(
+            "output/chapter10/trained_mountain_car_ann.png",
+        ));
 
         chart_builder.create_chart().unwrap();
     }

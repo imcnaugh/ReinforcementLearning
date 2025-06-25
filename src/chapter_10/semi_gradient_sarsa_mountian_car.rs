@@ -3,7 +3,7 @@ use crate::chapter_10::mountain_car::{
     VELOCITY_LOWER_BOUND, VELOCITY_UPPER_BOUND,
 };
 use rand::prelude::IndexedRandom;
-use rand::{rng, Rng};
+use rand::Rng;
 
 pub fn semi_gradient_sarsa_mountain_car(
     learning_rate: f64,
