@@ -148,21 +148,31 @@ fn test_job_ad_identification() {
     let probably_a_job_ad_text = "Senior Software Engineer";
     let probably_not_a_job_ad_text = "Get yours today";
 
-    let probably_a_job_ad_input = probably_a_job_ad_text
+    let mut probably_a_job_ad_input = vec![0.0; input_size];
+    probably_a_job_ad_text
         .to_lowercase()
         .split(" ")
-        .map(|x| word_indexes.get(x).unwrap_or(&0))
-        .map(|x| *x as f64)
-        .collect::<Vec<f64>>();
-    let probably_not_a_job_ad_input = probably_not_a_job_ad_text
+        .for_each(|x| {
+            let index = match word_indexes.get(x) {
+                None => 0,
+                Some(&v) => v as usize,
+            };
+            probably_a_job_ad_input[index] = 1.0;
+        });
+    let mut probably_not_a_job_ad_input = vec![0.0; input_size];
+    probably_not_a_job_ad_text
         .to_lowercase()
         .split(" ")
-        .map(|x| word_indexes.get(x).unwrap_or(&0))
-        .map(|x| *x as f64)
-        .collect::<Vec<f64>>();
+        .for_each(|x| {
+            let index = match word_indexes.get(x) {
+                None => 0,
+                Some(&v) => v as usize,
+            };
+            probably_not_a_job_ad_input[index] = 1.0;
+        });
 
-    let probably_a_job_ad_output = model.predict(probably_a_job_ad_input.clone());
-    let probably_not_a_job_ad_output = model.predict(probably_not_a_job_ad_input.clone());
+    let probably_a_job_ad_output = model.predict(probably_a_job_ad_input);
+    let probably_not_a_job_ad_output = model.predict(probably_not_a_job_ad_input);
 
     println!("Probably a job ad: {:?}", probably_a_job_ad_output);
     println!("Probably not a job ad: {:?}", probably_not_a_job_ad_output);
