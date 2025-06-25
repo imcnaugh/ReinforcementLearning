@@ -149,11 +149,12 @@ mod tests {
     use plotters::prelude::full_palette::{BLUE_500, GREEN_900, PURPLE, RED_500};
     use plotters::prelude::{ShapeStyle, BLACK, BLUE, RED};
     use std::path::PathBuf;
+    use egui::Key::L;
     use rand::prelude::IndexedRandom;
     use crate::attempts_at_framework::v2::agent::n_step_sarsa::NStepSarsa;
     use crate::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
     use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, ModelBuilder};
-    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::LINEAR;
+    use crate::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::{LINEAR, RELU};
 
     #[test]
     fn test_mountain_car() {
@@ -225,12 +226,14 @@ mod tests {
     fn train_mountain_car_with_ann() {
         let learning_rate = 0.5 / 8.0;
         let discount_factor = 1.0;
-        let exploration_rate = 0.01;
-        let episodes = 1000;
+        let exploration_rate = 0.1;
+        let episodes = 100;
 
         let mut model_builder = ModelBuilder::new();
         model_builder.set_loss_function(Box::new(MeanSquaredError));
         model_builder.set_input_size(TILES * 2 * CarAction::COUNT);
+        // model_builder.add_layer(LayerBuilder::new(LINEAR, 1));
+        // model_builder.add_layer(LayerBuilder::new(RELU, 5));
         model_builder.add_layer(LayerBuilder::new(LINEAR, 1));
         let model = model_builder.build().unwrap();
 
