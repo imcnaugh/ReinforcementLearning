@@ -1,4 +1,3 @@
-use std::fmt::format;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::loss_functions::LossFunction;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, ModelBuilder};
