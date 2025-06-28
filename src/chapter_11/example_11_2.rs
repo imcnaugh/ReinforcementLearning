@@ -25,6 +25,10 @@ impl State {
     fn is_terminal(&self) -> bool {
         self.next_states.is_empty()
     }
+
+    fn get_true_value(&self) -> f64 {
+        self.true_value
+    }
 }
 
 #[cfg(test)]
@@ -64,15 +68,19 @@ mod tests {
 
         let state_b = State::new("b".to_string(), vec![(1.0, terminal_state_b)], 1.0);
         let state_c = State::new("c".to_string(), vec![(0.0, terminal_state_c)], 0.0);
-        let state_a = State::new("a".to_string(), vec![(0.0, state_b), (0.0, state_c)], 0.5);
+        let state_a = State::new(
+            "a".to_string(),
+            vec![(0.0, state_b.clone()), (0.0, state_c.clone())],
+            0.5,
+        );
 
-        let episode_count = 10000;
-        let learning_rate = 0.10;
+        let episode_count = 1000000;
+        let learning_rate = 0.001;
         let mut state_a_value = 0.0;
         let mut state_b_value = 0.0;
         let mut state_c_value = 0.0;
 
-        for episode_number in (0..episode_count) {
+        for _ in 0..episode_count {
             let mut history = vec![];
 
             let mut current_state = state_a.clone();
@@ -97,6 +105,66 @@ mod tests {
             }
         }
 
-        println!("State A value: {}, State B value: {}, State C value: {}", state_a_value, state_b_value, state_c_value);
+        println!(
+            "State A value: {}, State B value: {}, State C value: {}",
+            state_a_value, state_b_value, state_c_value
+        );
+
+        fn in_acceptable_error(a: f64, b: f64) -> bool {
+            (a - b).abs() < 0.01
+        }
+
+        assert!(in_acceptable_error(state_a_value, state_a.get_true_value()));
+        assert!(in_acceptable_error(state_b_value, state_b.get_true_value()));
+        assert!(in_acceptable_error(state_c_value, state_c.get_true_value()));
     }
+
+    // #[test]
+    // fn mean_square_td_error_setup() {
+    //     let terminal_state_b = State::new("terminal_b".to_string(), vec![], 0.0);
+    //     let terminal_state_c = State::new("terminal_c".to_string(), vec![], 0.0);
+    //
+    //     let state_b = State::new("b".to_string(), vec![(1.0, terminal_state_b)], 1.0);
+    //     let state_c = State::new("c".to_string(), vec![(0.0, terminal_state_c)], 0.0);
+    //     let state_a = State::new("a".to_string(), vec![(0.0, state_b.clone()), (0.0, state_c.clone())], 0.5);
+    //
+    //     let episode_count = 1000000;
+    //     let learning_rate = 0.001;
+    //     let mut state_a_value = 0.0;
+    //     let mut state_b_value = 0.0;
+    //     let mut state_c_value = 0.0;
+    //
+    //     for _ in 0..episode_count {
+    //         let mut current_state = state_a.clone();
+    //
+    //         while !current_state.is_terminal() {
+    //             let current_state_value = match current_state.id.as_str() {
+    //                 "a" => state_a_value,
+    //                 "b" => state_b_value,
+    //                 "c" => state_c_value,
+    //                 _ => panic!("Unexpected state"),
+    //             };
+    //
+    //             let (reward, next_state) = current_state.transition();
+    //
+    //             let next_state_value = match next_state.id.as_str() {
+    //                 "b" => state_b_value,
+    //                 "c" => state_c_value,
+    //                 _ => 0.0,
+    //             };
+    //             let error = reward + next_state_value - current_state_value;
+    //
+    //             match current_state.id.as_str() {
+    //                 "a" => state_a_value += learning_rate * error,
+    //                 "b" => state_b_value += learning_rate * error,
+    //                 "c" => state_c_value += learning_rate * error,
+    //                 _ => panic!("Unexpected state"),
+    //             }
+    //
+    //             current_state = next_state.clone();
+    //         }
+    //     }
+    //
+    //     println!("State A value: {}, State B value: {}, State C value: {}", state_a_value, state_b_value, state_c_value);
+    // }
 }
