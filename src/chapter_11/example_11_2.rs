@@ -119,48 +119,4 @@ mod tests {
         assert!(in_acceptable_error(state_b_value, state_b.get_true_value()));
         assert!(in_acceptable_error(state_c_value, state_c.get_true_value()));
     }
-
-    #[test]
-    fn mean_square_td_error_setup() {
-        let terminal_state_b = State::new("terminal_b".to_string(), vec![], 0.0);
-        let terminal_state_c = State::new("terminal_c".to_string(), vec![], 0.0);
-
-        let state_b = State::new("b".to_string(), vec![(1.0, terminal_state_b)], 1.0);
-        let state_c = State::new("c".to_string(), vec![(0.0, terminal_state_c)], 0.0);
-        let state_a = State::new(
-            "a".to_string(),
-            vec![(0.0, state_b.clone()), (0.0, state_c.clone())],
-            0.5,
-        );
-
-        let episode_count = 1000000;
-        let learning_rate = 0.001;
-
-        let mut values = HashMap::from([("a", 0.0), ("b", 0.0), ("c", 0.0)]);
-
-        for _ in 0..episode_count {
-            let mut current_state = state_a.clone();
-
-            while !current_state.is_terminal() {
-                let id = current_state.id.as_str();
-                let current_value = *values.get(id).unwrap();
-
-                let (reward, next_state) = current_state.transition();
-                let next_value = values.get(next_state.id.as_str()).copied().unwrap_or(0.0);
-
-                let td_error = reward + next_value - current_value;
-
-                *values.get_mut(id).unwrap() += learning_rate * 2.0 * td_error;
-
-                if values.contains_key(next_state.id.as_str()) {
-                    *values.get_mut(next_state.id.as_str()).unwrap() -=
-                        learning_rate * 2.0 * td_error;
-                }
-
-                current_state = next_state.clone();
-            }
-        }
-
-        println!("{:?}", values);
-    }
 }
