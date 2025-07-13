@@ -101,6 +101,22 @@ impl ValueEstimation {
 
         (sum_squared_error / n_states, variance / n_states)
     }
+
+    fn mean_square_return_error(&self) -> f64 {
+        let mut sum_squared_error = 0.0;
+        let n_states = self.estimated_values.len() as f64;
+
+        for (state, estimated_value) in &self.estimated_values {
+            let reward = match state {
+                Left => 0.0,
+                Right => 2.0,
+            };
+            let error = (reward - estimated_value).powi(2);
+            sum_squared_error += error;
+        }
+
+        sum_squared_error / n_states
+    }
 }
 
 #[cfg(test)]
@@ -133,12 +149,15 @@ mod tests {
         // Calculate decomposed components
         let (bias_squared, variance) = value_estimation.decomposed_msve();
 
+        let msre = value_estimation.mean_square_return_error();
+
         println!("MSVE: {}", msve);
         println!("Bias²: {}", bias_squared);
         println!("Variance: {}", variance);
+        println!("MSRE: {}", msre);
         println!("Bias² + Variance: {}", bias_squared + variance);
 
         // Verify that MSVE = Bias² + Variance
-        assert!((msve - (bias_squared + variance)).abs() < 1e-10);
+        assert!((msve - msre).abs() < 1e-10);
     }
 }
