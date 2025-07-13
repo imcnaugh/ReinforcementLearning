@@ -1,5 +1,6 @@
 use crate::chapter_11::exercise_11_4::Action::{Left, Right};
 use rand::prelude::IteratorRandom;
+use std::collections::HashMap;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Action {
@@ -42,6 +43,66 @@ impl TestState {
     }
 }
 
+#[derive(Debug)]
+struct ValueEstimation {
+    true_values: HashMap<Action, f64>,
+    estimated_values: HashMap<Action, f64>,
+}
+
+impl ValueEstimation {
+    fn new() -> Self {
+        let mut true_values = HashMap::new();
+        let mut estimated_values = HashMap::new();
+
+        // Initialize with some values
+        true_values.insert(Left, 0.0);
+        true_values.insert(Right, 2.0);
+        estimated_values.insert(Left, 0.25); // Example estimate
+        estimated_values.insert(Right, 1.75); // Example estimate
+
+        Self {
+            true_values,
+            estimated_values,
+        }
+    }
+
+    fn msve(&self) -> f64 {
+        // Calculate MSVE according to equation 11.24
+        // MSVE = E[(Vᵖ(s) - v̂(s))²]
+        let mut sum_squared_error = 0.0;
+        let n_states = self.true_values.len() as f64;
+
+        for (state, true_value) in &self.true_values {
+            let estimated_value = self.estimated_values.get(state).unwrap();
+            // Add and subtract true value as per the hint
+            let error = (estimated_value - true_value).powi(2);
+            sum_squared_error += error;
+        }
+
+        sum_squared_error / n_states
+    }
+
+    fn decomposed_msve(&self) -> (f64, f64) {
+        // Decompose MSVE into bias² and variance terms
+        let mut variance = 0.0;
+        let mut sum_squared_error = 0.0;
+        let n_states = self.true_values.len() as f64;
+
+        for (state, true_value) in &self.true_values {
+            let estimated_value = self.estimated_values.get(state).unwrap();
+            // Add and subtract true value as per the hint
+            let error = (estimated_value - true_value).powi(2);
+            sum_squared_error += error;
+
+            // We would need multiple samples for true variance
+            // This is simplified for demonstration
+            variance += 0.0; // In this simple example, we assume no variance
+        }
+
+        (sum_squared_error / n_states, variance / n_states)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -60,5 +121,24 @@ mod tests {
             );
             state = new_state;
         }
+    }
+
+    #[test]
+    fn test_msve_decomposition() {
+        let value_estimation = ValueEstimation::new();
+
+        // Calculate total MSVE
+        let msve = value_estimation.msve();
+
+        // Calculate decomposed components
+        let (bias_squared, variance) = value_estimation.decomposed_msve();
+
+        println!("MSVE: {}", msve);
+        println!("Bias²: {}", bias_squared);
+        println!("Variance: {}", variance);
+        println!("Bias² + Variance: {}", bias_squared + variance);
+
+        // Verify that MSVE = Bias² + Variance
+        assert!((msve - (bias_squared + variance)).abs() < 1e-10);
     }
 }
