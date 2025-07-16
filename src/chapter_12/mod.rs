@@ -1,14 +1,10 @@
 fn lambda_return(lambda: f64, rewards: Vec<f64>) -> f64 {
     let mut running_reward_total = rewards[0];
-    let sum = rewards[1..]
-        .iter()
-        .enumerate()
-        .map(|(i, r)| {
-            let return_value = (1.0 - lambda) * lambda.powi(i as i32) * running_reward_total;
-            running_reward_total += r;
-            return_value
-        })
-        .sum::<f64>();
+    let sum = rewards[1..].iter().enumerate().fold(0.0, |acc, (i, r)| {
+        let weighted_reward_total = (1.0 - lambda) * lambda.powi(i as i32) * running_reward_total;
+        running_reward_total += r;
+        acc + weighted_reward_total
+    });
 
     let weighted_reward_sum = lambda.powi((rewards.len() - 1) as i32) * running_reward_total;
     sum + weighted_reward_sum
