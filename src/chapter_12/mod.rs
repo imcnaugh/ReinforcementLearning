@@ -1,3 +1,5 @@
+mod td_trace_decay;
+
 fn lambda_return(lambda: f64, rewards: Vec<f64>) -> f64 {
     let mut running_reward_total = rewards[0];
     let sum = rewards[1..].iter().enumerate().fold(0.0, |acc, (i, r)| {
