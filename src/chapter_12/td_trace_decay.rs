@@ -73,3 +73,71 @@ impl<S: State> TdTraceDecay<S> {
             .sum()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::service::x_state_walk_environment::{WalkState, WalkStateFactory};
+
+    #[test]
+    fn do_random_walk() {
+        let discount_rate = 1.0;
+        let trace_decay_rate = 0.5;
+        let learning_rate = 0.00001;
+
+        let number_of_states = 100;
+        // let value_function = generate_polynomial_value_function(number_of_states, 1);
+        let value_function = generate_simple_value_function(number_of_states);
+        let state_factory = WalkStateFactory::new(number_of_states, 10, &value_function).unwrap();
+
+        let idk = state_factory.get_starting_state();
+        let starting_states = vec![idk];
+
+        let mut td_trace_decay = TdTraceDecay::new(
+            starting_states,
+            discount_rate,
+            trace_decay_rate,
+            learning_rate,
+        );
+
+        for _ in 0..1000 {
+            td_trace_decay.learn_for_episode();
+        }
+
+        for id in 0..number_of_states {
+            let (_, state) = state_factory.generate_state_and_reward_for_id(id as i32);
+            let value = td_trace_decay.get_state_value_estimate(&state);
+            println!("State id: {}, has value: {}", id, value);
+        }
+
+        println!("{:?}", td_trace_decay.weights)
+    }
+
+    fn generate_simple_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
+        move |state| {
+            let state_id_as_usize = state.get_id().parse::<usize>().unwrap();
+            if state_id_as_usize == 0 || state_id_as_usize == total_states - 1 {
+                return vec![0.0, 0.0];
+            }
+            vec![1.0, state_id_as_usize as f64]
+        }
+    }
+
+    fn generate_polynomial_value_function(
+        total_states: usize,
+        polynomial_degree: usize,
+    ) -> impl Fn(WalkState) -> Vec<f64> {
+        move |state| {
+            let mut response = vec![0.0; polynomial_degree + 1];
+            if !state.is_terminal() {
+                response[0] = 1.0;
+                for i in 0..polynomial_degree {
+                    response[i + 1] = (state.get_id().parse::<f64>().unwrap()
+                        / total_states as f64)
+                        * response[i];
+                }
+            }
+            response
+        }
+    }
+}
