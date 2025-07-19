@@ -1,6 +1,6 @@
 mod general_learnings;
-mod true_td_lambda;
 mod td_trace_decay;
+mod true_td_lambda;
 
 fn lambda_return(lambda: f64, rewards: Vec<f64>) -> f64 {
     let mut running_reward_total = rewards[0];

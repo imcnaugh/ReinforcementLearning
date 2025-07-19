@@ -1,6 +1,5 @@
 use crate::attempts_at_framework::v1::policy::Policy;
 use crate::attempts_at_framework::v2::state::State;
-use egui::text_selection::visuals::paint_text_selection;
 use rand::prelude::IteratorRandom;
 
 pub struct TrueTdLambda<P: Policy, S: State> {
@@ -39,18 +38,19 @@ impl<P: Policy, S: State> TrueTdLambda<P, S> {
 
     pub fn learn_for_single_episode(&mut self) {
         let mut eligibility_trace_vector = vec![0.0; self.weights.len()];
-        let mut tmp = 0; // The V_old variable defined as a temporary scalar variable
+        let mut tmp: f64 = 0.0; // The V_old variable defined as a temporary scalar variable
 
         let mut current_state = self
             .starting_states
             .iter()
             .choose(&mut rand::rng())
-            .unwrap();
+            .unwrap()
+            .clone();
 
         while !current_state.is_terminal() {
-            let action = self.chose_action_for_state_according_to_policy(current_state);
+            let action = self.chose_action_for_state_according_to_policy(&current_state);
             let (reward, next_state) = current_state.take_action(&action);
-            let current_state_value = self.get_state_value(current_state);
+            let current_state_value = self.get_state_value(&current_state);
             let next_state_value = self.get_state_value(&next_state);
             let temporal_difference =
                 reward + (self.discount_rate * next_state_value) - current_state_value;
@@ -64,6 +64,20 @@ impl<P: Policy, S: State> TrueTdLambda<P, S> {
                     a + b
                 })
                 .collect();
+
+            let idk = self.size_step_parameter
+                * (temporal_difference + current_state_value - next_state_value);
+            let wut = self.size_step_parameter * (next_state_value - current_state_value);
+            self.weights = self
+                .weights
+                .iter()
+                .zip(eligibility_trace_vector.iter())
+                .zip(current_state.get_values())
+                .map(|((w, e), v)| w + (idk * e) - wut * v)
+                .collect();
+
+            tmp = next_state_value;
+            current_state = next_state.clone();
         }
     }
 
