@@ -67,7 +67,7 @@ impl<P: Policy, S: State> TrueTdLambda<P, S> {
 
             let idk = self.size_step_parameter
                 * (temporal_difference + current_state_value - next_state_value);
-            let wut = self.size_step_parameter * (next_state_value - current_state_value);
+            let wut = self.size_step_parameter * (current_state_value - tmp);
             self.weights = self
                 .weights
                 .iter()
