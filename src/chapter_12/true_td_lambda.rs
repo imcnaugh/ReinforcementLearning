@@ -105,11 +105,12 @@ impl<P: Policy, S: State> TrueTdLambda<P, S> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
     use crate::service::x_state_walk_environment::{WalkState, WalkStateFactory};
-    use super::*;
 
-    const DEFAULT_VALUE_FUNCTION: fn(WalkState) -> Vec<f64> = |s| vec![s.get_id().parse::<f64>().unwrap()];
+    const DEFAULT_VALUE_FUNCTION: fn(WalkState) -> Vec<f64> =
+        |s| vec![s.get_id().parse::<f64>().unwrap()];
 
     fn generate_polynomial_value_function(
         total_states: usize,
@@ -142,22 +143,15 @@ mod tests {
 
         let policy = RandomPolicy::new();
 
-        let mut true_td_lambda = TrueTdLambda::new(
-            policy,
-            0.001,
-            0.9,
-            0.9,
-            starting_states,
-        );
+        let mut true_td_lambda = TrueTdLambda::new(policy, 0.001, 0.9, 0.9, starting_states);
 
         (0..number_of_episodes).for_each(|_| true_td_lambda.learn_for_single_episode());
 
         println!("Weights: {:?}", true_td_lambda.weights);
         (0..19).for_each(|i| {
-                let (_,state) = factory.generate_state_and_reward_for_id(i);
-                let value = true_td_lambda.get_state_value(&state);
-                println!("State Id {} has value: {}", i, value);
-            }
-        )
+            let (_, state) = factory.generate_state_and_reward_for_id(i);
+            let value = true_td_lambda.get_state_value(&state);
+            println!("State Id {} has value: {}", i, value);
+        })
     }
 }
