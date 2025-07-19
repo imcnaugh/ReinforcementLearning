@@ -132,24 +132,34 @@ mod tests {
 
     #[test]
     fn nineteen_step_random_walk_test() {
-        let number_of_episodes = 10000;
+        let number_of_episodes = 1000;
+        let size_step_parameter = 0.1;
+        let trace_decay_rate = 0.5;
+        let discount_rate = 0.9;
+        let total_states = 19;
 
-        let value_function = generate_polynomial_value_function(19, 1);
+        let value_function = generate_polynomial_value_function(total_states, 1);
 
-        let factory = WalkStateFactory::new(19, 1, &value_function).unwrap();
+        let factory = WalkStateFactory::new(total_states, 1, &value_function).unwrap();
 
         let starting_state = factory.get_starting_state();
         let starting_states = vec![starting_state];
 
         let policy = RandomPolicy::new();
 
-        let mut true_td_lambda = TrueTdLambda::new(policy, 0.001, 0.9, 0.9, starting_states);
+        let mut true_td_lambda = TrueTdLambda::new(
+            policy,
+            size_step_parameter,
+            trace_decay_rate,
+            discount_rate,
+            starting_states,
+        );
 
         (0..number_of_episodes).for_each(|_| true_td_lambda.learn_for_single_episode());
 
         println!("Weights: {:?}", true_td_lambda.weights);
-        (0..19).for_each(|i| {
-            let (_, state) = factory.generate_state_and_reward_for_id(i);
+        (0..total_states).for_each(|i| {
+            let (_, state) = factory.generate_state_and_reward_for_id(i as i32);
             let value = true_td_lambda.get_state_value(&state);
             println!("State Id {} has value: {}", i, value);
         })
