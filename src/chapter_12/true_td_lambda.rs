@@ -108,9 +108,17 @@ mod tests {
     use super::*;
     use crate::attempts_at_framework::v1::policy::RandomPolicy;
     use crate::service::x_state_walk_environment::{WalkState, WalkStateFactory};
-
-    const DEFAULT_VALUE_FUNCTION: fn(WalkState) -> Vec<f64> =
-        |s| vec![s.get_id().parse::<f64>().unwrap()];
+    fn generate_simple_value_function(total_states: usize) -> impl Fn(WalkState) -> Vec<f64> {
+        move |state| {
+            if !state.is_terminal() {
+                let state_id = state.get_id().parse::<f64>().unwrap();
+                let state_feature = state_id / total_states as f64;
+                vec![state_feature]
+            } else {
+                vec![0.0]
+            }
+        }
+    }
 
     fn generate_polynomial_value_function(
         total_states: usize,
@@ -134,11 +142,12 @@ mod tests {
     fn nineteen_step_random_walk_test() {
         let number_of_episodes = 1000;
         let size_step_parameter = 0.1;
-        let trace_decay_rate = 0.5;
-        let discount_rate = 0.9;
+        let trace_decay_rate = 0.9;
+        let discount_rate = 1.0;
         let total_states = 19;
 
-        let value_function = generate_polynomial_value_function(total_states, 1);
+        // let value_function = generate_polynomial_value_function(total_states, 1);
+        let value_function = generate_simple_value_function(total_states);
 
         let factory = WalkStateFactory::new(total_states, 1, &value_function).unwrap();
 
