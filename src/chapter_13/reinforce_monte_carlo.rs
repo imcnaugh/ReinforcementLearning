@@ -71,3 +71,23 @@ use crate::attempts_at_framework::v2::state::State;
 use crate::chapter_13::example_13_1::{
     generate_center_state, generate_left_state, generate_right_state,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "This test is not deterministic"]
+    fn test_select_action_for_state() {
+        let mut policy = ReinforceMonteCarlo::new(0.1);
+        policy
+            .preferences
+            .insert(("center".to_string(), "l".to_string()), 0.9);
+        policy
+            .preferences
+            .insert(("center".to_string(), "r".to_string()), 0.1);
+        let state = generate_center_state();
+        let action = policy.select_action_for_state("center").unwrap();
+        assert_eq!(action, "l");
+    }
+}
