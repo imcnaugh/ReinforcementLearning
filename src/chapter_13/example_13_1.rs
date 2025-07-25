@@ -1,7 +1,7 @@
 use crate::attempts_at_framework::v2::state::State;
 
 #[derive(Clone)]
-struct GridworldState {
+pub struct GridworldState {
     id: String,
     actions: Vec<String>,
     is_terminal: bool,
@@ -49,7 +49,7 @@ impl State for GridworldState {
     }
 }
 
-fn generate_left_state() -> GridworldState {
+pub fn generate_left_state() -> GridworldState {
     GridworldState {
         id: "left".to_string(),
         actions: vec!["l".to_string(), "r".to_string()],
@@ -58,7 +58,7 @@ fn generate_left_state() -> GridworldState {
     }
 }
 
-fn generate_center_state() -> GridworldState {
+pub fn generate_center_state() -> GridworldState {
     GridworldState {
         id: "center".to_string(),
         actions: vec!["l".to_string(), "r".to_string()],
@@ -67,7 +67,7 @@ fn generate_center_state() -> GridworldState {
     }
 }
 
-fn generate_right_state() -> GridworldState {
+pub fn generate_right_state() -> GridworldState {
     GridworldState {
         id: "right".to_string(),
         actions: vec!["l".to_string(), "r".to_string()],
@@ -76,7 +76,7 @@ fn generate_right_state() -> GridworldState {
     }
 }
 
-fn generate_terminal_state() -> GridworldState {
+pub fn generate_terminal_state() -> GridworldState {
     GridworldState {
         id: "terminal".to_string(),
         actions: Vec::new(),
