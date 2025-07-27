@@ -6,14 +6,12 @@ use std::collections::HashMap;
 /// The first policy gradient control method discussed in the book, but I still have some
 /// reservations about how this could be scaled to
 struct ReinforceMonteCarlo {
-    parameter_step_size: f64,
     preferences: HashMap<(String, String), f64>,
 }
 
 impl ReinforceMonteCarlo {
-    pub fn new(parameter_step_size: f64) -> Self {
+    pub fn new() -> Self {
         Self {
-            parameter_step_size,
             preferences: HashMap::new(),
         }
     }
@@ -79,7 +77,7 @@ mod tests {
     #[test]
     #[ignore = "This test is not deterministic"]
     fn test_select_action_for_state() {
-        let mut policy = ReinforceMonteCarlo::new(0.1);
+        let mut policy = ReinforceMonteCarlo::new();
         policy
             .preferences
             .insert(("center".to_string(), "l".to_string()), 0.9);
