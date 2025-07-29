@@ -43,16 +43,21 @@ impl ReinforceMonteCarlo {
 
     /// Calculate the policy gradient for softmax policy
     /// ∇ ln π(a|s,θ) for softmax policy
-    fn policy_gradient(&self, state_id: &str, actions: &[String], selected_action: &str) -> HashMap<String, f64> {
+    fn policy_gradient(
+        &self,
+        state_id: &str,
+        actions: &[String],
+        selected_action: &str,
+    ) -> HashMap<String, f64> {
         let probabilities = self.softmax_probabilities(state_id, actions);
         let mut gradients = HashMap::new();
 
         for (i, action) in actions.iter().enumerate() {
             let prob = probabilities[i];
             let gradient = if action == selected_action {
-                1.0 - prob  // ∇ ln π(a|s,θ) = 1 - π(a|s,θ) for selected action
+                1.0 - prob // ∇ ln π(a|s,θ) = 1 - π(a|s,θ) for selected action
             } else {
-                -prob       // ∇ ln π(a|s,θ) = -π(a|s,θ) for non-selected actions
+                -prob // ∇ ln π(a|s,θ) = -π(a|s,θ) for non-selected actions
             };
             gradients.insert(action.clone(), gradient);
         }
@@ -64,33 +69,28 @@ impl ReinforceMonteCarlo {
     /// Returns Vec<(state_id, action, reward)>
     fn generate_episode(&self) -> Vec<(String, String, f64)> {
         let mut episode = Vec::new();
-        let mut current_state = "start".to_string(); // You'll need to adapt this to your environment
+        let mut current_state = generate_left_state(); // You'll need to adapt this to your environment
 
         // This is a simplified episode generation - you'll need to adapt this
         // to work with your specific environment/game
         loop {
             // Get available actions for current state
-            let actions = self.get_available_actions(&current_state);
-            if actions.is_empty() {
+            if current_state.is_terminal() {
                 break; // Terminal state
             }
 
             // Select action according to policy
-            let action = match self.select_action_for_state(&current_state) {
+            let action = match self.select_action_for_state(&current_state.get_id()) {
                 Ok(a) => a,
                 Err(_) => break,
             };
 
             // Take action and observe reward and next state
-            let (reward, next_state) = self.take_action(&current_state, &action);
+            let (reward, next_state) = &current_state.take_action(&action);
 
-            episode.push((current_state.clone(), action, reward));
+            episode.push((current_state.get_id().clone(), action, *reward));
 
-            if self.is_terminal(&next_state) {
-                break;
-            }
-
-            current_state = next_state;
+            current_state = next_state.clone();
         }
 
         episode
@@ -112,9 +112,16 @@ impl ReinforceMonteCarlo {
 
     /// Update policy parameters using REINFORCE algorithm
     fn update_policy(&mut self, episode: &[(String, String, f64)], returns: &[f64]) {
-        for (t, ((state_id, action, _reward), &g_t)) in episode.iter().zip(returns.iter()).enumerate() {
+        for (t, ((state_id, action, _reward), &g_t)) in
+            episode.iter().zip(returns.iter()).enumerate()
+        {
             // Get available actions for this state
-            let actions = self.get_available_actions(state_id);
+            let actions = match state_id.clone().as_str() {
+                "left" => generate_left_state().get_actions(),
+                "center" => generate_center_state().get_actions(),
+                "right" => generate_right_state().get_actions(),
+                _ => panic!("Unknown state: {}", state_id),
+            };
 
             // Calculate policy gradient ∇ ln π(A_t|S_t, θ)
             let gradients = self.policy_gradient(state_id, &actions, action);
@@ -146,19 +153,12 @@ impl ReinforceMonteCarlo {
             self.update_policy(&episode, &returns);
 
             if episode_num % 100 == 0 {
-                println!("Episode {}: Episode length = {}", episode_num, episode.len());
+                println!(
+                    "Episode {}: Episode length = {}",
+                    episode_num,
+                    episode.len()
+                );
             }
-        }
-    }
-
-    // Helper methods - you'll need to implement these based on your environment
-    fn get_available_actions(&self, state_id: &str) -> Vec<String> {
-        // Implement based on your specific environment
-        match state_id {
-            "left" => vec!["move_center".to_string(), "stay".to_string()],
-            "center" => vec!["l".to_string(), "r".to_string()],
-            "right" => vec!["move_center".to_string(), "stay".to_string()],
-            _ => vec![],
         }
     }
 
@@ -177,7 +177,6 @@ impl ReinforceMonteCarlo {
     fn is_terminal(&self, state_id: &str) -> bool {
         state_id == "terminal"
     }
-
 }
 
 impl Policy for ReinforceMonteCarlo {
