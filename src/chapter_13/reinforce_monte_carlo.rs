@@ -112,9 +112,7 @@ impl ReinforceMonteCarlo {
 
     /// Update policy parameters using REINFORCE algorithm
     fn update_policy(&mut self, episode: &[(String, String, f64)], returns: &[f64]) {
-        for (t, ((state_id, action, _reward), &g_t)) in
-            episode.iter().zip(returns.iter()).enumerate()
-        {
+        for ((state_id, action, _reward), &g_t) in episode.iter().zip(returns.iter()) {
             // Get available actions for this state
             let actions = match state_id.clone().as_str() {
                 "left" => generate_left_state().get_actions(),
@@ -140,6 +138,7 @@ impl ReinforceMonteCarlo {
     pub fn learn(&mut self, num_episodes: usize) {
         for episode_num in 0..num_episodes {
             // Generate an episode following π(·|·, θ)
+
             let episode = self.generate_episode();
 
             if episode.is_empty() {
@@ -228,5 +227,25 @@ mod tests {
         let state = generate_center_state();
         let action = policy.select_action_for_state("center").unwrap();
         assert_eq!(action, "l");
+    }
+
+    #[test]
+    fn test_corridor_gridworld() {
+        let mut policy = ReinforceMonteCarlo::new(0.2, 1.0);
+        policy.learn(100);
+
+        let l_l = policy.get_preference("left", "l");
+        let l_r = policy.get_preference("left", "r");
+        let c_l = policy.get_preference("center", "l");
+        let c_r = policy.get_preference("center", "r");
+        let r_l = policy.get_preference("right", "l");
+        let r_r = policy.get_preference("right", "r");
+
+        println!("l_l: {:?}", l_l);
+        println!("l_r: {:?}", l_r);
+        println!("c_l: {:?}", c_l);
+        println!("c_r: {:?}", c_r);
+        println!("r_l: {:?}", r_l);
+        println!("r_r: {:?}", r_r);
     }
 }

@@ -26,19 +26,19 @@ impl State for GridworldState {
     fn take_action(&self, action: &str) -> (f64, Self) {
         match self.id.as_str() {
             "left" => match action {
-                "left" => (-1.0, generate_left_state()),
-                "right" => (-1.0, generate_center_state()),
-                _ => panic!("Invalid action"),
+                "l" => (-1.0, generate_left_state()),
+                "r" => (-1.0, generate_center_state()),
+                _ => panic!("Invalid action {}", action),
             },
             "center" => match action {
-                "left" => (-1.0, generate_right_state()),
-                "right" => (-1.0, generate_left_state()),
-                _ => panic!("Invalid action"),
+                "l" => (-1.0, generate_right_state()),
+                "r" => (-1.0, generate_left_state()),
+                _ => panic!("Invalid action {}", action),
             },
             "right" => match action {
-                "left" => (-1.0, generate_center_state()),
-                "right" => (-1.0, generate_terminal_state()),
-                _ => panic!("Invalid action"),
+                "l" => (-1.0, generate_center_state()),
+                "r" => (-1.0, generate_terminal_state()),
+                _ => panic!("Invalid action {}", action),
             },
             _ => panic!("Invalid id"),
         }
