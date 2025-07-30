@@ -160,22 +160,6 @@ impl ReinforceMonteCarlo {
             }
         }
     }
-
-    fn take_action(&self, state_id: &str, action: &str) -> (f64, String) {
-        // Implement your environment dynamics
-        // Returns (reward, next_state)
-        match (state_id, action) {
-            ("left", "move_center") => (0.0, "center".to_string()),
-            ("center", "l") => (-1.0, "left".to_string()),
-            ("center", "r") => (1.0, "right".to_string()),
-            ("right", "move_center") => (0.0, "center".to_string()),
-            _ => (0.0, "terminal".to_string()),
-        }
-    }
-
-    fn is_terminal(&self, state_id: &str) -> bool {
-        state_id == "terminal"
-    }
 }
 
 impl Policy for ReinforceMonteCarlo {
@@ -231,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_corridor_gridworld() {
-        let mut policy = ReinforceMonteCarlo::new(0.2, 1.0);
+        let mut policy = ReinforceMonteCarlo::new(0.2, 0.9);
         policy.learn(100);
 
         let l_l = policy.get_preference("left", "l");
@@ -247,5 +231,12 @@ mod tests {
         println!("c_r: {:?}", c_r);
         println!("r_l: {:?}", r_l);
         println!("r_r: {:?}", r_r);
+
+        let left_state_action = policy.select_action_for_state("left").unwrap();
+        let center_state_action = policy.select_action_for_state("center").unwrap();
+        let right_state_action = policy.select_action_for_state("right").unwrap();
+        println!("left_state_action: {:?}", left_state_action);
+        println!("center_state_action: {:?}", center_state_action);
+        println!("right_state_action: {:?}", right_state_action);
     }
 }
