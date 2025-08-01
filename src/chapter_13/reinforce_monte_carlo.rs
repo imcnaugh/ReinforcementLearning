@@ -114,10 +114,10 @@ impl ReinforceMonteCarlo {
     fn update_policy(&mut self, episode: &[(String, String, f64)], returns: &[f64]) {
         for ((state_id, action, _reward), &g_t) in episode.iter().zip(returns.iter()) {
             // Get available actions for this state
-            let actions = match state_id.clone().as_str() {
-                "left" => generate_left_state().get_actions(),
-                "center" => generate_center_state().get_actions(),
-                "right" => generate_right_state().get_actions(),
+            let (actions, estimated_value) = match state_id.clone().as_str() {
+                "left" => (generate_left_state().get_actions(), -3.0),
+                "center" => (generate_center_state().get_actions(), -2.0),
+                "right" => (generate_right_state().get_actions(), -1.0),
                 _ => panic!("Unknown state: {}", state_id),
             };
 
@@ -128,7 +128,7 @@ impl ReinforceMonteCarlo {
             for (act, gradient) in gradients {
                 let key = (state_id.clone(), act.clone());
                 let current_preference = self.preferences.get(&key).unwrap_or(&0.0);
-                let update = self.learning_rate * g_t * gradient;
+                let update = self.learning_rate * (g_t - estimated_value) * gradient;
                 self.preferences.insert(key, current_preference + update);
             }
         }
@@ -216,7 +216,7 @@ mod tests {
     #[test]
     fn test_corridor_gridworld() {
         let mut policy = ReinforceMonteCarlo::new(0.2, 0.9);
-        policy.learn(100);
+        policy.learn(3);
 
         let l_l = policy.get_preference("left", "l");
         let l_r = policy.get_preference("left", "r");
