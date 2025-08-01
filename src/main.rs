@@ -14,9 +14,8 @@ use ReinforcementLearning::attempts_at_framework::v1::policy::{DeterministicPoli
 use ReinforcementLearning::attempts_at_framework::v2::agent::n_step_td::NStepTD;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::loss_functions::mean_squared_error::MeanSquaredError;
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::Model;
-use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, LayerType, ModelBuilder};
+use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::{LayerBuilder, ModelBuilder};
 use ReinforcementLearning::attempts_at_framework::v2::artificial_neural_network::model::model_builder::LayerType::{LINEAR, RELU};
-use ReinforcementLearning::attempts_at_framework::v2::state::State;
 use ReinforcementLearning::chess_state::{get_state_id_from_fen_string, ChessState};
 use ReinforcementLearning::chess_state_v2::ChessStateV2;
 
