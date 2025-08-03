@@ -6,6 +6,26 @@ use std::collections::HashMap;
 /// The first policy gradient control method discussed in the book, but I still have some
 /// reservations about how this could be scaled to
 struct ReinforceMonteCarlo {
+    /*
+     * No, so this is wrong; I should only have <String, f64> for action, and preference, to have
+     * that second string in there for state is a mistake as the state space is too big. But is
+     * there a better way to do this, I'm trying to think of ways of turning an action into a
+     * feature vector, or an action vector.
+     *
+     * What would that even look like, if I had A action vector, I would also need a set of weights,
+     * and that could almost group like actions, almost like a classification problem. Then, as I am
+     * doing the soft max logic, beforehand, I take each available action, get a preference value
+     * using the weights, then run the soft max.
+     *
+     * On paper this sounds great, but how do I train the action vector weights? If an action was
+     * taken, get the reward for that action, then modify the weights with the error being
+     * calculated with.
+     *
+     * `error = current_value - reward`
+     *
+     * It seems a bit barbaric. Should I be taking into account the current state or new states'
+     * estimated value?
+     */
     preferences: HashMap<(String, String), f64>,
     learning_rate: f64,
     discount_rate: f64,
