@@ -25,6 +25,9 @@ struct ReinforceMonteCarlo {
      *
      * It seems a bit barbaric. Should I be taking into account the current state or new states'
      * estimated value?
+     *
+     * That still does not work well for traditional reinforce learning and having a preference
+     * over the entire action space, or does it?
      */
     preferences: HashMap<(String, String), f64>,
     learning_rate: f64,
