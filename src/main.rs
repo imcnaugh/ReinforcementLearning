@@ -42,7 +42,7 @@ fn generate_model() -> Model {
     builder.set_input_size(790);
 
     builder.add_layer(LayerBuilder::new(LINEAR, 64));
-    builder.add_layer(LayerBuilder::new(RELU, 10));
+    // builder.add_layer(LayerBuilder::new(RELU, 10));
     builder.add_layer(LayerBuilder::new(LINEAR, 1));
 
     let model = builder.build();
