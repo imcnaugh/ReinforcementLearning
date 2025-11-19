@@ -1,5 +1,6 @@
 pub mod linear_neuron;
 pub mod relu_neuron;
+pub mod sigmoid_neuron;
 
 pub trait Neuron {
     fn new(number_of_inputs: usize) -> Self
